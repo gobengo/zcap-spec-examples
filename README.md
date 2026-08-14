@@ -26,6 +26,12 @@ npx zcap-spec-examples --help
 curl -sS https://w3c-ccg.github.io/zcap-spec/ | npx zcap-spec-examples | jq -r .url
 ```
 
+It can also be run straight from the repository, which builds it on install:
+
+```shell
+npx github:gobengo/zcap-spec-examples --help
+```
+
 Or install it, as a CLI or as a library:
 
 ```shell
@@ -34,7 +40,19 @@ npm install zcap-spec-examples
 
 ```js
 import { extractExamples, stripJsonComments } from "zcap-spec-examples";
+
+const response = await fetch("https://w3c-ccg.github.io/zcap-spec/");
+
+for await (const example of extractExamples(response)) {
+  console.log(example.name, example.url, example.mediaType);
+}
 ```
+
+`extractExamples` streams: it takes a `Response`, a `ReadableStream`, an async
+iterable of chunks, or a plain string, and yields each example as soon as its
+closing tag arrives — the document is never buffered in full. When you already
+have the HTML as a string and want an array back, `extractExamplesFromHtml`
+does that synchronously.
 
 The published package ships compiled JavaScript in `dist/` (plus the original
 TypeScript source), so `npx` works on Node ≥ 20 without type stripping. Running
@@ -62,8 +80,8 @@ to stdout.
 - `--base-url <url>` sets the base URL used to build absolute example `url`s.
   Rarely needed — it overrides the URL the document declares about itself,
   which is detected automatically (see below).
-- `--format <format>` selects `json` (default, NDJSON) or `text` (a
-  human-readable listing).
+- `--format <format>` selects `json` (indented), `ndjson` (one compact object
+  per line), or `text` (a human-readable listing). See below for the default.
 
 If stdin is piped in, it is used as the source of zcap-spec HTML:
 
@@ -153,12 +171,22 @@ Each extracted example is printed as a JSON object:
   `"https://w3id.org/zcap/v1"` is left alone — a plain regex would truncate
   every URL in the document.
 
-Examples are emitted as newline-delimited JSON (NDJSON), one object per line,
-so the output can be piped directly into tools like `jq`:
+### Output formats
+
+Output adapts to where it is going, the way `git log` and `ls --color=auto` do:
+
+- **At a terminal** you get indented JSON, so trying the tool out by hand is
+  readable.
+- **Piped or redirected** you get newline-delimited JSON (NDJSON) — one compact
+  object per line — so pipelines and line-based tools are unaffected.
+
+Both are a valid stream of JSON values for `jq`, so this works either way:
 
 ```shell
 ./zcap-spec-examples.ts | jq -r .name
 ```
+
+Force one with `--format=json`, `--format=ndjson`, or `--format=text`.
 
 ## Repository layout
 
@@ -166,15 +194,25 @@ The root is kept deliberately thin: the CLI, and the files that npm and
 TypeScript insist on finding there.
 
 ```
-zcap-spec-examples.ts        the CLI — the whole implementation, no runtime deps
+zcap-spec-examples.ts        entry point: the executable script, and the
+                             package's public API (re-exported from below)
+nodejs.ts                    Node.js wiring — argv, stdin/stdout, broken pipes
+ZcapSpecExamplesCli.ts       what the CLI does, with the runtime injected
+examples.ts                  extraction and parsing — pure, zero imports
 test/                        tests, discovered automatically by `node --test`
 etc/
   tsconfig.build.json        emitting build config (see `npm run build:js`)
+  typedoc.json               API docs config (see `npm run docs`)
   zcap-spec-examples/        sample spec HTML for manual runs
-    fixture.html
-    fixture-respec.html
-dist/                        build output (gitignored, created by `npm run build:js`)
+dist/                        build output (gitignored)
+docs/                        generated API docs (gitignored)
 ```
+
+The dependency direction is one-way — `examples.ts` → `ZcapSpecExamplesCli.ts`
+→ `nodejs.ts` → `zcap-spec-examples.ts` — so the extraction logic and the CLI
+behaviour stay usable outside Node. Modules import each other with explicit
+`.ts` extensions so the code runs with no build step;
+`rewriteRelativeImportExtensions` rewrites those to `.js` when building.
 
 `package.json`, `package-lock.json`, `tsconfig.json`, `.npmrc` and `.gitignore`
 stay at the root because their tools resolve them by convention from there.
@@ -187,6 +225,25 @@ If you use npm, `npm test` should run the tests.
 
 `npm run tsc` type-checks the sources. It runs `tsc --noEmit`, so it never
 generates JavaScript — type-checking and running are fully decoupled.
+
+`npm run docs` generates API documentation from the JSDoc comments with
+TypeDoc, into `docs/` (gitignored):
+
+```shell
+npm run docs && open docs/index.html
+```
+
+The same output is published to GitHub Pages at
+<https://gobengo.github.io/zcap-spec-examples/> by
+`.github/workflows/docs.yml`, on every push to `main`.
+
+The workflow builds the docs and uploads them straight to Pages — there is no
+`gh-pages` branch and nothing generated is ever committed, which is why `docs/`
+stays in `.gitignore`. It uses only first-party `actions/*` steps.
+
+This requires a one-time repository setting: **Settings → Pages → Build and
+deployment → Source: GitHub Actions**. If that is left on "Deploy from a
+branch", the workflow will run green and publish nothing.
 
 `npm run build:js` compiles to JavaScript when you actually want it, via
 `etc/tsconfig.build.json`, emitting `.js`, `.d.ts`, and source maps into
@@ -218,10 +275,15 @@ Server**.
 
 > **Do not run a bare `npm publish`.** `.npmrc` sets `ignore-scripts=true` as a
 > supply-chain control, and that also disables this package's own lifecycle
-> scripts — so `prepack` does not run, and the tarball would ship without
+> scripts — so `prepare` does not run, and the tarball would ship without
 > `dist/`. The result installs fine and then does nothing when invoked. The
 > `release` script builds explicitly first, which sidesteps this. Confirm with
 > `npm pack --dry-run` that `dist/zcap-spec-examples.js` is listed.
+
+The `prepare` script is what makes `npx github:gobengo/zcap-spec-examples`
+work: installing from git gets a clone with no `dist/`, and npm runs `prepare`
+(not `prepack`) to build it. Removing `prepare` would silently break git
+installs with `command not found`.
 
 ## Security
 
@@ -248,6 +310,7 @@ can be replaced by a modest amount of in-repo code, replace it.**
 | *(none)* | runtime | There are **zero** runtime dependencies. |
 | `typescript` | dev only | Kept. Provides `npm run tsc`. Never runs in the code path that touches untrusted input, and emits nothing. |
 | `@types/node` | dev only | Kept. Type declarations only — erased before execution, so no `@types/*` package can run anything, at install or at runtime. |
+| `typedoc` | dev only | Kept. Generates `npm run docs`. Brings transitive dependencies, but runs only when a maintainer builds docs — never during install, and never on spec input. |
 
 The in-repo scanner is deliberately boring: pure string operations, no `eval`
 or `new Function`, no prototype mutation, no filesystem or network access. Its
@@ -287,7 +350,23 @@ and `child_process` all fail with `ERR_ACCESS_DENIED`, while the tool keeps
 working — it only needs stdin, stdout, and (in fetch mode) the network. The
 entry-point script is readable by default, so no `--allow-fs-read` is required.
 
-Two caveats worth knowing:
+This works when running the script directly, from a clone. It does **not**
+compose with `npx`:
+
+- `NODE_OPTIONS=--permission npx ...` hardens `npx` itself — npx is a Node
+  program, and it dies trying to read its own files.
+- npm installs a `bin` as a symlink, and under `--permission` the module loader
+  cannot read through it without an `--allow-fs-read` allowance.
+
+For an installed copy, point Node at the real file and allow reads. Writes,
+subprocesses, workers, and addons stay denied:
+
+```shell
+node --permission --allow-fs-read='*' \
+  "$(npm root)/zcap-spec-examples/dist/zcap-spec-examples.js" --help
+```
+
+Three caveats worth knowing:
 
 - **Network access is only gated on Node ≥ 25**, via `--allow-net`. On Node
   22–24, `--permission` covers the filesystem, child processes, workers,

@@ -9,12 +9,12 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "allowImportingTsExtensions": false,
     "outDir": "../dist",
     "rootDir": "..",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true
   },
+  // tsc follows the imports, so the whole module graph is emitted.
   "include": ["../zcap-spec-examples.ts"]
 }

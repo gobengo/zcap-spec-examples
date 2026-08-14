@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    // Array.fromAsync and friends, used with the streaming API.
+    "lib": ["ESNext"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
@@ -8,6 +10,9 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "allowImportingTsExtensions": true,
+    // Lets source import "./foo.ts" (required to run without a build) while
+    // `npm run build:js` still emits valid "./foo.js" imports.
+    "rewriteRelativeImportExtensions": true,
     "noEmit": true
   },
   "include": ["*.ts", "test/*.ts"]

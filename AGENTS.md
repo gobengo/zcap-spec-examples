@@ -9,7 +9,7 @@ the same change.
 
 ## What this project is
 
-A single-file CLI that extracts the examples from [zcap-spec][] and prints them
+A small CLI that extracts the examples from [zcap-spec][] and prints them
 as NDJSON. It exists so that spec authors can check every example against a
 schema, and so others can build on the examples programmatically.
 
@@ -28,21 +28,32 @@ relax them.
 2. **No build step to run it.** `./zcap-spec-examples.ts` runs directly on
    Node ≥ 22.18 via type stripping. `npm run build:js` exists for publishing,
    not for development. Never make running or testing require a build.
-3. **`ZcapSpecExamplesCli` stays runtime-independent.** No `process`, no
-   `fetch`, no `node:*` imports reachable from it. Everything it needs is
-   injected via `ZcapSpecExamplesCliDeps`. Node-specific concerns live in
-   `NodejsZcapSpecExamplesCli` and `main()`.
+3. **The layering must stay one-directional.** `examples.ts` →
+   `ZcapSpecExamplesCli.ts` → `nodejs.ts` → `zcap-spec-examples.ts`. The first
+   two must have no `process`, no `fetch`, and no `node:*` imports; everything
+   they need is injected via `ZcapSpecExamplesCliDeps`. Never import "upward"
+   — a cycle here breaks the entry point in ways type-checking will not catch.
 4. **No `eval`, no `new Function`, no prototype mutation** anywhere near the
    parsing code.
 
 ## Layout
 
 ```
-zcap-spec-examples.ts        the entire implementation
+zcap-spec-examples.ts        entry point: executable script + public re-exports
+nodejs.ts                    Node wiring: argv, stdio, EPIPE, main()
+ZcapSpecExamplesCli.ts       CLI behaviour, runtime-independent
+examples.ts                  extraction + parsing, pure, no imports at all
 test/                        tests, found automatically by `node --test`
 etc/tsconfig.build.json      emitting build config
+etc/typedoc.json             API docs config
 etc/zcap-spec-examples/      sample spec HTML for manual runs
+.github/workflows/docs.yml   builds docs and publishes them to GitHub Pages
 ```
+
+Imports between these use explicit `.ts` extensions so the code runs with no
+build step. `rewriteRelativeImportExtensions` in `tsconfig.json` is what lets
+`npm run build:js` still emit valid `.js` imports — do not remove it, and do
+not "fix" the `.ts` extensions by hand.
 
 Root-level files are kept to the minimum that npm and TypeScript resolve by
 convention. New config belongs in `etc/`, new tests in `test/`.
@@ -54,6 +65,7 @@ convention. New config belongs in `etc/`, new tests in `test/`.
 | `npm test` | `node --test` — no path argument, discovery finds `test/` |
 | `npm run tsc` | type-check only (`--noEmit`), never emits |
 | `npm run build:js` | compile to `dist/` (gitignored) |
+| `npm run docs` | TypeDoc API docs into `docs/` (gitignored) |
 | `npm start` | run the CLI from source |
 | `npm run start:hardened` | run under `node --permission` |
 | `npm run release` | build, then publish (see the publishing trap below) |
@@ -100,30 +112,87 @@ Each of these was a real bug found by testing, not a hypothetical.
   target. Comparing them naively makes `main()` silently never run — the CLI
   prints nothing and exits 0. `isMainModule()` compares realpaths for this
   reason. There is a regression test; keep it.
+- **`files` in package.json lists source explicitly.** Adding a new source
+  module means adding it there, or the published tarball ships an incomplete
+  `.ts` source tree alongside `dist/`.
+- **`extractExamples` streams; `extractExamplesFromHtml` does not.** The
+  streaming path keeps only a bounded buffer, resolves the base URL once from
+  the `<head>` seen before the first example, and drops each example after
+  yielding it. A test asserts heap growth stays far below input size — do not
+  "simplify" it into something that concatenates the whole document.
+- **Output format depends on whether stdout is a TTY.** Pretty JSON for a
+  human, compact NDJSON when piped. The TTY check lives in `nodejs.ts`;
+  `ZcapSpecExamplesCli` defaults to `ndjson` because it cannot know. Never make
+  pretty-printing the default for piped output — it would break line-based
+  consumers.
 - **Regexes must not backtrack ambiguously.** The tag scanner uses
   mutually-exclusive alternation (`"[^"]*"|'[^']*'|[^>"']`) so hostile input
   cannot trigger catastrophic backtracking. A test asserts linear behaviour.
 
-## The publishing trap
+## Packaging traps
 
-`.npmrc` sets `ignore-scripts=true` as a supply-chain control. That setting
-also disables this package's *own* lifecycle scripts, so `npm publish` will
-**not** run `prepack`, and would otherwise ship a tarball with no `dist/` —
-producing a package where `npx zcap-spec-examples` silently does nothing.
+`dist/` is gitignored but is the published `bin` target, so anything that
+skips the build produces a package that installs cleanly and then does
+nothing. Three separate mechanisms have to keep working:
 
-Always publish with `npm run release`, which builds explicitly first. Verify
-before publishing:
+1. **`prepare` builds on git install.** `npx github:gobengo/zcap-spec-examples`
+   clones the repo, which has no `dist/`. npm runs `prepare` — *not* `prepack`
+   — for git dependencies. Removing `prepare` breaks git installs with
+   `sh: zcap-spec-examples: command not found`.
+2. **`.npmrc` sets `ignore-scripts=true`**, which also disables this package's
+   *own* lifecycle scripts. So a bare `npm publish` skips `prepare` and ships
+   a tarball with no `dist/`. Always publish with `npm run release`, which
+   builds explicitly first. Do not remove `ignore-scripts=true` to "fix" this.
+3. **`files` beats `.gitignore`.** `dist/` is gitignored yet still packed,
+   because the `files` allowlist takes precedence. Verify before publishing:
 
 ```shell
 npm pack --dry-run   # must list dist/zcap-spec-examples.js
 ```
 
-Do not remove `ignore-scripts=true` to "fix" this.
+## `--permission` does not compose with `npx`
+
+The README encourages `node --permission ./zcap-spec-examples.ts`, which works
+with *zero* allowances when run directly from a clone. It does not survive
+`npx`, for two independent reasons, both verified:
+
+- `NODE_OPTIONS=--permission npx ...` hardens npx itself, which then cannot
+  read its own files.
+- npm installs a `bin` as a symlink, and the module loader cannot read through
+  it without `--allow-fs-read`.
+
+So the installed-package recipe needs `--permission --allow-fs-read='*'` and a
+real path. Do not "simplify" the README by claiming plain `--permission` works
+under `npx`; it does not.
+
+Related: `isMainModule()` prefers `import.meta.main` precisely because it needs
+no filesystem access, so it keeps working under `--permission`. The
+`realpathSync` branch is only a fallback for Node versions without it.
+
+## Publishing docs
+
+`.github/workflows/docs.yml` runs `npm ci && npm run tsc && npm run docs` and
+uploads `docs/` to GitHub Pages on every push to `main`. Things to preserve:
+
+- **`docs/` stays gitignored.** The workflow uploads the build artifact
+  directly; nothing generated is committed, and there is no `gh-pages` branch.
+- **`npm ci` does not build `dist/`** here, because `.npmrc` sets
+  `ignore-scripts=true` and so `prepare` is skipped. That is fine — TypeDoc
+  reads the `.ts` sources. Do not add a build step to "fix" it.
+- **The `path:` in the workflow must match `out` in `etc/typedoc.json`.**
+- **Keep TypeDoc's links relative.** Project Pages serve from
+  `/zcap-spec-examples/`, so a root-absolute asset path would 404. The default
+  output is relative; verify with a subpath server if you change the theme.
+- Only first-party `actions/*` are used. Prefer keeping it that way, and
+  SHA-pin them if you want to match the npm pinning strictness.
 
 ## Testing expectations
 
 - Tests use `node:test` and `node:assert/strict`. No test framework, consistent
   with the zero-dependency rule.
+- Public API changes should come with JSDoc a newcomer can follow: a sentence
+  on what it does, `@param`/`@returns`, an `@example`, and an `@category` that
+  matches `etc/typedoc.json`. Run `npm run docs` and look at the result.
 - Test the behaviour that broke, not just the happy path. Process-level
   behaviour (EPIPE, symlinked invocation) is tested by spawning a child
   process; that is deliberate, since neither reproduces in-process.

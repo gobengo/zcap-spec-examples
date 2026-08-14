@@ -6,6 +6,7 @@ import {
   decodeEntities,
   discoverBaseUrl,
   extractExamples,
+  extractExamplesFromHtml,
   formatExample,
   formatExamplesAsJson,
   getAttribute,
@@ -66,7 +67,7 @@ test("toText strips tags and comments, then decodes entities", () => {
 // ---------------------------------------------------------------------------
 
 test("extractExamples assigns name/content/mediaType from example elements", () => {
-  const examples = extractExamples(FIXTURE_HTML);
+  const examples = extractExamplesFromHtml(FIXTURE_HTML);
   assert.equal(examples.length, 2);
   assert.equal(examples[0].name, "example-1");
   assert.match(examples[0].content, /urn:zcap:root/);
@@ -80,56 +81,56 @@ test("extractExamples ignores non-example elements and lookalike class names", (
     <div class="exampleish"><pre>also not an example</pre></div>
     <aside class="example" id="real"><pre>yes</pre></aside>
   `;
-  const examples = extractExamples(html);
+  const examples = extractExamplesFromHtml(html);
   assert.equal(examples.length, 1);
   assert.equal(examples[0].content, "yes");
 });
 
 test("extractExamples flattens markup nested inside <pre>", () => {
   const html = `<aside class="example" id="e"><pre><code><span>{"a": </span><span>1}</span></code></pre></aside>`;
-  const examples = extractExamples(html);
+  const examples = extractExamplesFromHtml(html);
   assert.equal(examples[0].content, '{"a": 1}');
 });
 
 test("extractExamples falls back to a positional name when there is no id", () => {
   const html = `<aside class="example"><pre>a</pre></aside><aside class="example"><pre>b</pre></aside>`;
-  const examples = extractExamples(html);
+  const examples = extractExamplesFromHtml(html);
   // Matches the ids ReSpec generates client-side: example-1, example-2, ...
   assert.deepEqual(examples.map((e) => e.name), ["example-1", "example-2"]);
   assert.deepEqual(examples.map((e) => e.url), ["#example-1", "#example-2"]);
 });
 
 test("extractExamples infers mediaType from a language class, else by sniffing", () => {
-  const asHttp = extractExamples(
+  const asHttp = extractExamplesFromHtml(
     `<aside class="example" id="a"><pre class="http">GET / HTTP/1.1</pre></aside>`,
   );
   assert.equal(asHttp[0].mediaType, "message/http");
 
-  const asJsonLd = extractExamples(
+  const asJsonLd = extractExamplesFromHtml(
     `<aside class="example" id="b"><pre><code class="language-jsonld">{}</code></pre></aside>`,
   );
   assert.equal(asJsonLd[0].mediaType, "application/ld+json");
 
   // No class hint: sniffed as JSON because it parses.
-  const sniffed = extractExamples(
+  const sniffed = extractExamplesFromHtml(
     `<aside class="example" id="c"><pre>{"ok": true}</pre></aside>`,
   );
   assert.equal(sniffed[0].mediaType, "application/json");
 
   // JSON with a comment is not valid JSON, but it is valid JSONC.
-  const withComment = extractExamples(
+  const withComment = extractExamplesFromHtml(
     `<aside class="example" id="d"><pre>{\n // hi\n "ok": true\n}</pre></aside>`,
   );
   assert.equal(withComment[0].mediaType, "application/jsonc");
 
   // Neither JSON nor JSONC.
-  const prose = extractExamples(
+  const prose = extractExamplesFromHtml(
     `<aside class="example" id="e"><pre>just some prose</pre></aside>`,
   );
   assert.equal(prose[0].mediaType, "text/plain");
 
   // A `json` class does not make unparseable content JSON.
-  const lying = extractExamples(
+  const lying = extractExamplesFromHtml(
     `<aside class="example" id="f"><pre class="json">not json at all</pre></aside>`,
   );
   assert.equal(lying[0].mediaType, "text/plain");
@@ -176,7 +177,7 @@ test("examples annotated with comments round-trip through stripJsonComments", ()
   /* block form too */
   "controller": "https://social.example/alyssa#key-for-car"
 }</pre>`;
-  const [example] = extractExamples(html);
+  const [example] = extractExamplesFromHtml(html);
   assert.equal(example.mediaType, "application/jsonc");
   const parsed = JSON.parse(stripJsonComments(example.content));
   assert.deepEqual(parsed["@context"], ["https://w3id.org/zcap/v1"]);
@@ -189,20 +190,20 @@ test("examples annotated with comments round-trip through stripJsonComments", ()
 // ---------------------------------------------------------------------------
 
 test("extractExamples emits a bare fragment url when no base URL is known", () => {
-  const examples = extractExamples(FIXTURE_HTML);
+  const examples = extractExamplesFromHtml(FIXTURE_HTML);
   assert.equal(examples[0].url, "#example-1");
   assert.equal(examples[1].url, "#example-2");
 });
 
 test("extractExamples resolves an absolute url against a base URL", () => {
-  const examples = extractExamples(FIXTURE_HTML, {
+  const examples = extractExamplesFromHtml(FIXTURE_HTML, {
     baseUrl: "https://w3c-ccg.github.io/zcap-spec/",
   });
   assert.equal(examples[0].url, "https://w3c-ccg.github.io/zcap-spec/#example-1");
 });
 
 test("extractExamples degrades to a fragment when the base URL is malformed", () => {
-  const examples = extractExamples(FIXTURE_HTML, { baseUrl: "not a url" });
+  const examples = extractExamplesFromHtml(FIXTURE_HTML, { baseUrl: "not a url" });
   assert.equal(examples[0].url, "#example-1");
 });
 
@@ -262,7 +263,7 @@ test("discoverBaseUrl returns undefined when the document declares no URL", () =
 });
 
 test("extractExamples builds absolute urls from a ReSpec source document", () => {
-  const examples = extractExamples(RESPEC_SOURCE_HTML);
+  const examples = extractExamplesFromHtml(RESPEC_SOURCE_HTML);
   assert.deepEqual(examples.map((e) => e.url), [
     "https://w3c-ccg.github.io/zcap-spec/#example-1",
     "https://w3c-ccg.github.io/zcap-spec/#example-2",
@@ -272,12 +273,12 @@ test("extractExamples builds absolute urls from a ReSpec source document", () =>
 test("explicit baseUrl beats the document, which beats fallbackBaseUrl", () => {
   // Document-declared edDraftURI wins over the URL we happened to fetch from.
   assert.equal(
-    extractExamples(RESPEC_SOURCE_HTML, { fallbackBaseUrl: "https://mirror.example/" })[0].url,
+    extractExamplesFromHtml(RESPEC_SOURCE_HTML, { fallbackBaseUrl: "https://mirror.example/" })[0].url,
     "https://w3c-ccg.github.io/zcap-spec/#example-1",
   );
   // An explicit --base-url overrides everything.
   assert.equal(
-    extractExamples(RESPEC_SOURCE_HTML, {
+    extractExamplesFromHtml(RESPEC_SOURCE_HTML, {
       baseUrl: "https://override.example/",
       fallbackBaseUrl: "https://mirror.example/",
     })[0].url,
@@ -285,7 +286,7 @@ test("explicit baseUrl beats the document, which beats fallbackBaseUrl", () => {
   );
   // fallbackBaseUrl is used only when the document says nothing.
   assert.equal(
-    extractExamples(`<pre class="example">x</pre>`, { fallbackBaseUrl: "https://mirror.example/" })[0].url,
+    extractExamplesFromHtml(`<pre class="example">x</pre>`, { fallbackBaseUrl: "https://mirror.example/" })[0].url,
     "https://mirror.example/#example-1",
   );
 });
@@ -305,7 +306,7 @@ test("formatExample includes the name, media type, and url", () => {
 });
 
 test("formatExamplesAsJson prints one compact JSON object per line (NDJSON)", () => {
-  const examples = extractExamples(FIXTURE_HTML);
+  const examples = extractExamplesFromHtml(FIXTURE_HTML);
   const out = formatExamplesAsJson(examples);
   const lines = out.split("\n").filter((line) => line.length > 0);
   assert.equal(lines.length, 2);
@@ -383,6 +384,40 @@ test("ZcapSpecExamplesCli uses the fetched URL as the default base URL", async (
   assert.equal(parsed[0].url, "https://example.org/spec.html#example-1");
 });
 
+test("ZcapSpecExamplesCli --format=json pretty-prints, and stays valid for jq", async () => {
+  const written: string[] = [];
+  const cli = new ZcapSpecExamplesCli({
+    fetch: async () => ({ text: async () => "" }),
+    readStdin: async () => FIXTURE_HTML,
+    writeStdout: (chunk) => written.push(chunk),
+    writeStderr: () => {},
+  });
+
+  assert.equal(await cli.run({ format: "json" }), 0);
+  const out = written.join("");
+  assert.match(out, /^\{\n  "name": "example-1",\n/);
+  // Indented output is still a concatenated stream of JSON values, which is
+  // what jq consumes -- each record just spans several lines.
+  const records = out.trimEnd().split(/\n(?=\{)/).map((r) => JSON.parse(r));
+  assert.equal(records.length, 2);
+  assert.equal(records[1].name, "example-2");
+});
+
+test("ZcapSpecExamplesCli defaults to compact NDJSON, not pretty", async () => {
+  const written: string[] = [];
+  const cli = new ZcapSpecExamplesCli({
+    fetch: async () => ({ text: async () => "" }),
+    readStdin: async () => FIXTURE_HTML,
+    writeStdout: (chunk) => written.push(chunk),
+    writeStderr: () => {},
+  });
+
+  assert.equal(await cli.run({}), 0);
+  const lines = written.join("").trimEnd().split("\n");
+  assert.equal(lines.length, 2, "one line per example");
+  lines.forEach((line) => JSON.parse(line));
+});
+
 test("ZcapSpecExamplesCli --format=text prints the human-readable listing", async () => {
   const written: string[] = [];
   const cli = new ZcapSpecExamplesCli({
@@ -446,7 +481,7 @@ test("extractExamples stays linear on adversarial input (no catastrophic backtra
   ].join("\n");
 
   const started = process.hrtime.bigint();
-  const examples = extractExamples(hostile);
+  const examples = extractExamplesFromHtml(hostile);
   const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
 
   assert.ok(Array.isArray(examples));
@@ -455,9 +490,9 @@ test("extractExamples stays linear on adversarial input (no catastrophic backtra
 });
 
 test("extractExamples tolerates unterminated and malformed elements", () => {
-  assert.deepEqual(extractExamples("<aside class=\"example\" id=\"a\"><pre>unclosed")[0]?.content, "unclosed");
-  assert.equal(extractExamples("<html><body>no examples</body></html>").length, 0);
-  assert.equal(extractExamples("").length, 0);
+  assert.deepEqual(extractExamplesFromHtml("<aside class=\"example\" id=\"a\"><pre>unclosed")[0]?.content, "unclosed");
+  assert.equal(extractExamplesFromHtml("<html><body>no examples</body></html>").length, 0);
+  assert.equal(extractExamplesFromHtml("").length, 0);
 });
 
 // ---------------------------------------------------------------------------
@@ -515,4 +550,133 @@ test("CLI runs when invoked through a symlink, as `npx` / node_modules/.bin does
   assert.equal(stderr, "");
   assert.equal(code, 0);
   assert.match(stdout, /zcap-spec-examples - extract the examples/);
+});
+
+// ---------------------------------------------------------------------------
+// Streaming
+// ---------------------------------------------------------------------------
+
+/** A ReadableStream of `html` cut into `size`-byte pieces, as a network would. */
+function byteStream(html: string, size: number): ReadableStream<Uint8Array> {
+  const bytes = new TextEncoder().encode(html);
+  let offset = 0;
+  return new ReadableStream({
+    pull(controller) {
+      if (offset >= bytes.length) return void controller.close();
+      controller.enqueue(bytes.subarray(offset, offset + size));
+      offset += size;
+    },
+  });
+}
+
+const STREAM_HTML = `
+<html><head>
+  <script>var respecConfig = { edDraftURI: "https://w3c-ccg.github.io/zcap-spec/" };</script>
+</head><body>
+  <p>prose between examples</p>
+  <pre class="example">{"a": 1}</pre>
+  <p>more prose</p>
+  <pre class="example">{"b": 2} // note</pre>
+  <div class="note"><pre>not an example</pre></div>
+  <aside class="example" id="named"><pre>&quot;three&quot; &#x2713;</pre></aside>
+</body></html>`;
+
+test("extractExamples accepts a string and yields the same as the sync version", async () => {
+  const streamed = await Array.fromAsync(extractExamples(STREAM_HTML));
+  assert.deepEqual(streamed, extractExamplesFromHtml(STREAM_HTML));
+});
+
+test("extractExamples accepts a Response and streams its body", async () => {
+  const response = new Response(byteStream(STREAM_HTML, 64));
+  const examples = await Array.fromAsync(extractExamples(response));
+  assert.deepEqual(examples, extractExamplesFromHtml(STREAM_HTML));
+});
+
+test("extractExamples accepts a ReadableStream and an async iterable", async () => {
+  const fromStream = await Array.fromAsync(extractExamples(byteStream(STREAM_HTML, 32)));
+  assert.deepEqual(fromStream, extractExamplesFromHtml(STREAM_HTML));
+
+  async function* chunks() {
+    yield STREAM_HTML.slice(0, 100);
+    yield STREAM_HTML.slice(100);
+  }
+  assert.deepEqual(
+    await Array.fromAsync(extractExamples(chunks())),
+    extractExamplesFromHtml(STREAM_HTML),
+  );
+});
+
+test("extractExamples is unaffected by where chunk boundaries fall", async () => {
+  const expected = extractExamplesFromHtml(STREAM_HTML);
+  // Sizes chosen to split mid-tag, mid-attribute, and mid-content.
+  for (const size of [1, 2, 3, 7, 13, 64, 1024]) {
+    const got = await Array.fromAsync(extractExamples(byteStream(STREAM_HTML, size)));
+    assert.deepEqual(got, expected, `chunk size ${size} changed the result`);
+  }
+});
+
+test("extractExamples decodes multi-byte characters split across chunks", async () => {
+  // "✓" is three UTF-8 bytes; a 1-byte chunking guarantees it is torn apart.
+  const html = `<pre class="example">{"ok": "✓ — é"}</pre>`;
+  const [example] = await Array.fromAsync(extractExamples(byteStream(html, 1)));
+  assert.match(example.content, /✓ — é/);
+  assert.ok(!example.content.includes("�"), "should not contain replacement chars");
+});
+
+test("extractExamples finds the base URL from the head before emitting examples", async () => {
+  const examples = await Array.fromAsync(extractExamples(byteStream(STREAM_HTML, 16)));
+  assert.equal(examples[0].url, "https://w3c-ccg.github.io/zcap-spec/#example-1");
+  assert.equal(examples[2].url, "https://w3c-ccg.github.io/zcap-spec/#named");
+});
+
+test("extractExamples yields each example before the stream has finished", async () => {
+  // Prove it is incremental: the second half is withheld until the first
+  // example has already been handed to the consumer.
+  let released!: () => void;
+  const gate = new Promise<void>((resolve) => (released = resolve));
+
+  async function* chunks() {
+    yield `<pre class="example">{"first": 1}</pre>`;
+    await gate;
+    yield `<pre class="example">{"second": 2}</pre>`;
+  }
+
+  const iterator = extractExamples(chunks())[Symbol.asyncIterator]();
+  const first = await iterator.next();
+  assert.equal(first.done, false);
+  assert.match(first.value.content, /first/);
+
+  released(); // only now can the rest arrive
+  const second = await iterator.next();
+  assert.match(second.value.content, /second/);
+  assert.equal((await iterator.next()).done, true);
+});
+
+test("extractExamples keeps memory flat on input far larger than the examples", async () => {
+  // 40 MB of filler around a handful of examples. If anything accumulated the
+  // whole document, heap growth would track input size.
+  const filler = "<p>" + "x".repeat(1 << 20) + "</p>\n";
+  async function* chunks() {
+    yield `<html><head><base href="https://example.org/s/"></head><body>`;
+    for (let i = 0; i < 40; i++) {
+      yield filler;
+      yield `<pre class="example">{"n": ${i}}</pre>`;
+    }
+    yield "</body></html>";
+  }
+
+  global.gc?.();
+  const before = process.memoryUsage().heapUsed;
+  let peak = before;
+  let seen = 0;
+  for await (const example of extractExamples(chunks())) {
+    seen++;
+    assert.match(example.content, /"n":/);
+    peak = Math.max(peak, process.memoryUsage().heapUsed);
+  }
+
+  assert.equal(seen, 40);
+  const grewMb = (peak - before) / 1024 / 1024;
+  // ~42 MB streamed through. Buffering it all would show up here immediately.
+  assert.ok(grewMb < 12, `heap grew ${grewMb.toFixed(1)} MB, expected well under input size`);
 });

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+
+  "entryPoints": ["../zcap-spec-examples.ts"],
+  "tsconfig": "../tsconfig.json",
+  "out": "../docs",
+
+  "name": "zcap-spec-examples",
+  "readme": "none",
+
+  "categorizeByGroup": false,
+  "categoryOrder": [
+    "Extracting examples",
+    "Working with example content",
+    "Formatting output",
+    "Running the CLI",
+    "HTML scanning internals",
+    "*"
+  ],
+
+  "sort": ["source-order"],
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "includeVersion": true,
+  "hideGenerator": true,
+  "navigationLinks": {
+    "zcap-spec": "https://w3c-ccg.github.io/zcap-spec/",
+    "Repository": "https://github.com/gobengo/zcap-spec-examples"
+  },
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  }
+}
