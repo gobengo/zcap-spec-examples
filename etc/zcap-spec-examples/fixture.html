@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<body>
+<section>
+  <p>Here is a root capability.</p>
+  <aside class="example" id="example-1" title="A root capability">
+    <div class="example-title"><span>Example 1</span></div>
+    <pre class="nohighlight">{
+  "@context": ["https://w3id.org/zcap/v1"],
+  "id": "https://example.org/zcap/1"
+}</pre>
+  </aside>
+  <p>Here is a delegated capability.</p>
+  <aside class="example" id="example-2" title="A delegated capability">
+    <div class="example-title"><span>Example 2</span></div>
+    <pre class="nohighlight">{
+  "@context": ["https://w3id.org/zcap/v1"],
+  "id": "https://example.org/zcap/2",
+  "parentCapability": "https://example.org/zcap/1"
+}</pre>
+  </aside>
+</section>
+</body>
+</html>

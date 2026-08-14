@@ -1,0 +1,20 @@
+{
+  // Emitting build. The base config is `noEmit` (type-checking only, see
+  // `npm run tsc`); this one actually produces JavaScript in `dist/`, which is
+  // gitignored. Paths are relative to this file, which lives in `etc/`.
+  //
+  // Only the CLI source is built -- the tests are excluded because they import
+  // `../zcap-spec-examples.ts` by its .ts extension, which is fine for type
+  // stripping but cannot be emitted.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "outDir": "../dist",
+    "rootDir": "..",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "include": ["../zcap-spec-examples.ts"]
+}

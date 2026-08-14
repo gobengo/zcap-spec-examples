@@ -1,0 +1,8 @@
+node_modules/
+
+# Type-checking is `tsc --noEmit`, so nothing should be emitted. These are
+# here so that any accidental/experimental compile output stays untracked.
+dist/
+*.js
+*.d.ts
+*.tsbuildinfo

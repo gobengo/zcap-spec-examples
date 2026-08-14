@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Authorization Capabilities</title></head>
+<body>
+<section id="delegation">
+  <h2>Delegation</h2>
+  <p>A root capability looks like this:</p>
+  <aside class="example" id="example-1">
+    <div class="marker">
+      <a class="self-link" href="#example-1">Example 1</a>
+    </div>
+    <pre class="nohighlight highlight json">{
+  &quot;@context&quot;: &quot;https://w3id.org/zcap/v1&quot;,
+  &quot;id&quot;: &quot;urn:zcap:root:https%3A%2F%2Fexample.com%2Ffoo&quot;,
+  &quot;controller&quot;: &quot;did:key:example&quot;,
+  &quot;invocationTarget&quot;: &quot;https://example.com/foo&quot;
+}</pre>
+  </aside>
+
+  <p>With a comment, which makes it non-strict-JSON:</p>
+  <aside class="example" id="example-2">
+    <div class="marker"><a class="self-link" href="#example-2">Example 2</a></div>
+    <pre class="nohighlight">{
+  &quot;@context&quot;: &quot;https://w3id.org/zcap/v1&quot;,
+  // populated via a database or external system call
+  &quot;controller&quot;: &quot;did:key:example&quot;,
+  &quot;invocationTarget&quot;: &quot;https://foo.example/collections/123&quot;
+}</pre>
+  </aside>
+
+  <p>An HTTP invocation, and an entity-heavy body:</p>
+  <aside class="example" id="example-3">
+    <div class="marker"><a class="self-link" href="#example-3">Example 3</a></div>
+    <pre class="http">POST /foo HTTP/1.1
+Host: example.com
+capability-invocation: zcap id=&quot;urn:uuid:1234&quot;
+X-Note: 5 &lt; 10 &amp;&amp; 10 &gt; 5 &#8212; ok &#x2713;</pre>
+  </aside>
+</section>
+
+<section id="not-examples">
+  <p>This div is not an example and must be ignored.</p>
+  <div class="note"><pre>should not appear</pre></div>
+  <div class="exampleish"><pre>should also not appear</pre></div>
+</section>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "name": "zcap-spec-examples",
+  "version": "0.1.0",
+  "description": "Extracts the examples from the zcap-spec and prints them to stdout.",
+  "type": "module",
+  "bin": {
+    "zcap-spec-examples": "./dist/zcap-spec-examples.js"
+  },
+  "main": "./dist/zcap-spec-examples.js",
+  "types": "./dist/zcap-spec-examples.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/zcap-spec-examples.d.ts",
+      "default": "./dist/zcap-spec-examples.js"
+    }
+  },
+  "files": [
+    "dist",
+    "zcap-spec-examples.ts",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gobengo/zcap-spec-examples.git"
+  },
+  "homepage": "https://github.com/gobengo/zcap-spec-examples#readme",
+  "bugs": {
+    "url": "https://github.com/gobengo/zcap-spec-examples/issues"
+  },
+  "keywords": [
+    "zcap",
+    "zcap-spec",
+    "respec",
+    "spec",
+    "examples",
+    "cli",
+    "jsonc"
+  ],
+  "scripts": {
+    "start": "node zcap-spec-examples.ts",
+    "start:hardened": "node --permission zcap-spec-examples.ts",
+    "tsc": "tsc --noEmit",
+    "build:js": "tsc --project etc/tsconfig.build.json",
+    "test": "node --test",
+    "prepack": "npm run build:js",
+    "release": "npm run build:js && npm publish --ignore-scripts"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
