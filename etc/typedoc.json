@@ -1,13 +1,13 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-
-  "entryPoints": ["../zcap-spec-examples.ts"],
+  "entryPoints": [
+    "../zcap-spec-examples.ts",
+    "../fixtures.ts"
+  ],
   "tsconfig": "../tsconfig.json",
   "out": "../docs",
-
   "name": "zcap-spec-examples",
   "readme": "none",
-
   "categorizeByGroup": false,
   "categoryOrder": [
     "Extracting examples",
@@ -17,8 +17,9 @@
     "HTML scanning internals",
     "*"
   ],
-
-  "sort": ["source-order"],
+  "sort": [
+    "source-order"
+  ],
   "excludePrivate": true,
   "excludeInternal": true,
   "includeVersion": true,
@@ -31,5 +32,6 @@
     "notExported": true,
     "invalidLink": true,
     "notDocumented": false
-  }
+  },
+  "entryPointStrategy": "resolve"
 }

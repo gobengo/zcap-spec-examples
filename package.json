@@ -12,6 +12,10 @@
     ".": {
       "types": "./dist/zcap-spec-examples.d.ts",
       "default": "./dist/zcap-spec-examples.js"
+    },
+    "./fixtures": {
+      "types": "./dist/fixtures.d.ts",
+      "default": "./dist/fixtures.js"
     }
   },
   "files": [
@@ -20,6 +24,7 @@
     "examples.ts",
     "ZcapSpecExamplesCli.ts",
     "nodejs.ts",
+    "fixtures.ts",
     "README.md"
   ],
   "repository": {
@@ -45,6 +50,7 @@
     "tsc": "tsc --noEmit",
     "build:js": "tsc --project etc/tsconfig.build.json",
     "docs": "typedoc --options etc/typedoc.json",
+    "fixture:update": "node etc/update-fixture.ts",
     "test": "node --test",
     "prepare": "npm run build:js",
     "release": "npm run build:js && npm publish --ignore-scripts"
