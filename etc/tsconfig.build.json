@@ -16,5 +16,5 @@
     "sourceMap": true
   },
   // tsc follows the imports, so the whole module graph is emitted.
-  "include": ["../zcap-spec-examples.ts"]
+  "include": ["../zcap-spec-examples.ts", "../fixtures.ts"]
 }
