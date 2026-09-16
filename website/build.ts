@@ -3,7 +3,7 @@
  * Builds the static website into an output directory.
  *
  * ```shell
- * node website/build.ts --out build/website [--clean]
+ * node website/build.ts --out build/website [--clean] [--site-url <url>]
  * ```
  *
  * It does two things:
@@ -13,6 +13,13 @@
  *    `index.html` with the CLI's default spec URL.
  * 2. Generates `examples/index.html`, describing each example extracted from
  *    the bundled zcap-spec snapshot in `fixtures.ts`.
+ * 3. Compiles the library's browser-safe modules (`examples.ts`,
+ *    `fixtures.ts`) to ES modules in `lib/`, importable from any web page,
+ *    and fills `%LIBRARY_SNIPPET%` in `index.html` with a script that does so.
+ *
+ * `--site-url` is the absolute URL the site will be served from, used in that
+ * snippet. It defaults to the GitHub Pages URL derived from `repository` in
+ * package.json; gh-pages.yml passes the real one from `configure-pages`.
  *
  * The TypeDoc API docs are *not* built here; the `build-website` action (and
  * `npm run build:website`) writes them into `<out>/docs/` with TypeDoc's own
@@ -20,7 +27,9 @@
  *
  * Zero dependencies, runs via type stripping, same as the CLI.
  */
+import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -34,6 +43,46 @@ import { zcapSpecSnapshot } from "../fixtures.ts";
 import { DEFAULT_ZCAP_SPEC_URL } from "../ZcapSpecExamplesCli.ts";
 
 const websiteDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(websiteDir, "..");
+
+/**
+ * `https://<owner>.github.io/<repo>/` from package.json `repository`, which is
+ * where GitHub Pages serves a project site.
+ */
+export function defaultSiteUrl(): string {
+  const pkg = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8")) as {
+    repository?: string | { url?: string };
+  };
+  const repository = typeof pkg.repository === "string" ? pkg.repository : pkg.repository?.url;
+  const match = /github\.com[/:]([^/]+)\/([^/.]+?)(?:\.git)?$/.exec(repository ?? "");
+  if (!match) throw new Error("package.json repository is not a GitHub URL; pass --site-url");
+  return `https://${match[1]!.toLowerCase()}.github.io/${match[2]}/`;
+}
+
+/** The snippet shown on the homepage: import the hosted library and log each example. */
+export function librarySnippet(siteUrl: string, specUrl: string): string {
+  const base = siteUrl.endsWith("/") ? siteUrl : `${siteUrl}/`;
+  return `<script type="module">
+  import { extractExamples } from "${new URL("lib/examples.js", base)}";
+
+  const response = await fetch("${specUrl}");
+  for await (const example of extractExamples(response)) {
+    console.log(example.name, example);
+  }
+</script>`;
+}
+
+/** Compiles the browser-safe library modules into `<out>/lib/` with the repo's TypeScript. */
+function buildLibrary(out: string): void {
+  // Resolved from the repo, so this needs `npm ci` but never a global tsc.
+  const tsc = createRequire(import.meta.url).resolve("typescript/bin/tsc");
+  const result = spawnSync(
+    process.execPath,
+    [tsc, "--project", resolve(repoRoot, "etc/tsconfig.website.json"), "--outDir", resolve(out, "lib")],
+    { stdio: "inherit" },
+  );
+  if (result.status !== 0) throw new Error(`tsc failed building ${resolve(out, "lib")}`);
+}
 
 // ---------------------------------------------------------------------------
 // Describing an example
@@ -309,7 +358,10 @@ function isInside(child: string, parent: string): boolean {
   return rel === "" || (!rel.startsWith("..") && !rel.startsWith(sep) && rel !== "..");
 }
 
-export function build(outDir: string, { clean = false }: { clean?: boolean } = {}): void {
+export function build(
+  outDir: string,
+  { clean = false, siteUrl = defaultSiteUrl() }: { clean?: boolean; siteUrl?: string } = {},
+): void {
   const out = resolve(outDir);
   // Copying website/ into a directory inside website/ would recurse forever.
   if (isInside(out, websiteDir)) {
@@ -334,11 +386,20 @@ export function build(outDir: string, { clean = false }: { clean?: boolean } = {
   // that is a version index which redirects with JavaScript, so piping it
   // through the CLI yields nothing. One constant keeps the two in step.
   const indexPath = resolve(out, "index.html");
-  const index = readFileSync(indexPath, "utf8");
-  if (!index.includes("%ZCAP_SPEC_URL%")) {
-    throw new Error(`${indexPath}: expected a %ZCAP_SPEC_URL% placeholder`);
+  let index = readFileSync(indexPath, "utf8");
+  const placeholders: Record<string, string> = {
+    "%ZCAP_SPEC_URL%": escapeHtml(DEFAULT_ZCAP_SPEC_URL),
+    "%LIBRARY_SNIPPET%": escapeHtml(librarySnippet(siteUrl, DEFAULT_ZCAP_SPEC_URL)),
+  };
+  for (const [placeholder, value] of Object.entries(placeholders)) {
+    if (!index.includes(placeholder)) {
+      throw new Error(`${indexPath}: expected a ${placeholder} placeholder`);
+    }
+    index = index.replaceAll(placeholder, value);
   }
-  writeFileSync(indexPath, index.replaceAll("%ZCAP_SPEC_URL%", escapeHtml(DEFAULT_ZCAP_SPEC_URL)));
+  writeFileSync(indexPath, index);
+
+  buildLibrary(out);
 
   const examples = extractExamplesFromHtml(zcapSpecSnapshot.html);
   mkdirSync(resolve(out, "examples"), { recursive: true });
@@ -347,12 +408,17 @@ export function build(outDir: string, { clean = false }: { clean?: boolean } = {
 
 if (import.meta.main ?? process.argv[1] === fileURLToPath(import.meta.url)) {
   const { values } = parseArgs({
-    options: { out: { type: "string" }, clean: { type: "boolean", default: false } },
+    options: {
+      out: { type: "string" },
+      clean: { type: "boolean", default: false },
+      "site-url": { type: "string" },
+    },
   });
   if (!values.out) {
-    console.error("usage: node website/build.ts --out <directory> [--clean]");
+    console.error("usage: node website/build.ts --out <directory> [--clean] [--site-url <url>]");
     process.exit(2);
   }
-  build(values.out, { clean: values.clean });
+  // An empty --site-url (an unset CI input) means "use the default".
+  build(values.out, { clean: values.clean, siteUrl: values["site-url"] || defaultSiteUrl() });
   console.error(`website built in ${resolve(values.out)}`);
 }

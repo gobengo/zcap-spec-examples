@@ -4,6 +4,7 @@
 # entirely, so everything served is assembled here into one artifact:
 #
 #   /           website/ and /examples/   (.github/actions/build-website)
+#   /lib/       library as ES modules     (.github/actions/build-website)
 #   /docs/      TypeDoc API docs          (.github/actions/build-docs)
 #
 # The build actions only write to a directory; neither knows about Pages.
@@ -52,15 +53,19 @@ jobs:
       # must come first.
       - uses: actions/checkout@v4
 
+      # First, because its base_url is the site's real address, which the
+      # homepage's `import` snippet needs.
+      - id: pages
+        uses: actions/configure-pages@v5
+
       - uses: ./.github/actions/build-website
         with:
           output-directory: ${{ env.SITE_DIRECTORY }}
+          site-url: ${{ steps.pages.outputs.base_url }}
 
       - uses: ./.github/actions/build-docs
         with:
           output-directory: ${{ env.SITE_DIRECTORY }}/docs
-
-      - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:

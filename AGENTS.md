@@ -48,11 +48,12 @@ test/                        tests, found automatically by `node --test`
 etc/tsconfig.build.json      emitting build config
 etc/typedoc.json             API docs config
 etc/serve-gh-pages.ts        local server that mimics GitHub Pages (`npm run dev`)
+etc/tsconfig.website.json    emits the website's browser modules into /lib/
 etc/zcap-spec-examples/      sample spec HTML for manual runs
 .github/workflows/gh-pages.yml  the only Pages publisher: website + docs in one artifact
 .github/workflows/docs.yml   checks that the docs build (no publishing)
 .github/actions/build-docs/  reusable action: tsc + TypeDoc into a directory
-.github/actions/build-website/  reusable action: website/ + /examples/ into a directory
+.github/actions/build-website/  reusable action: website/ + /examples/ + /lib/ into a directory
 website/                     static site source; build.ts generates /examples/
 ```
 
@@ -220,6 +221,10 @@ action into `build/website/`, the `build-docs` action into
   `ignore-scripts=true` and so `prepare` is skipped. That is fine — TypeDoc
   and `website/build.ts` read the `.ts` sources. Do not add a build step to
   "fix" it.
+- **`/lib/` is a public API.** Other pages import
+  `https://gobengo.github.io/zcap-spec-examples/lib/examples.js`, so renaming
+  or moving it breaks them. Only pure modules go there (see
+  `etc/tsconfig.website.json`): nothing that imports `node:*` or `nodejs.ts`.
 - **Keep all site links relative.** Project Pages serve from
   `/zcap-spec-examples/`, so a root-absolute path would 404. TypeDoc's default
   output is relative; verify with a subpath server if you change the theme.

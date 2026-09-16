@@ -15,6 +15,7 @@
  *   inside `docs/index.html` resolve the same way they will on Pages.
  * - **`index.html` for directories**, and **`foo` → `foo.html`** fallback.
  * - **`404.html`** at the site root, with status 404, when one exists.
+ * - **`Access-Control-Allow-Origin: *`**, so cross-origin `import`s of `/lib/` work.
  *
  * Tooling only, zero dependencies. Binds to 127.0.0.1 by default.
  */
@@ -150,6 +151,8 @@ const server = createServer((req, res) => {
       "Content-Length": statSync(file).size,
       // Pages caches for 10 minutes; locally, always show the latest build.
       "Cache-Control": "no-store",
+      // Pages allows any origin, which is what lets other sites import /lib/.
+      "Access-Control-Allow-Origin": "*",
     });
     if (method === "HEAD") return void res.end();
     createReadStream(file).pipe(res);

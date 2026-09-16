@@ -9,16 +9,23 @@
 # Produces:
 #   <output-directory>/             static files copied from website/
 #   <output-directory>/examples/    generated from the zcap-spec snapshot in fixtures.ts
+#   <output-directory>/lib/         the library as browser ES modules, importable from any page
 #
 # The API docs are a separate action (build-docs); gh-pages.yml puts them at
 # <output-directory>/docs/. Knows nothing about where the output goes.
 name: Build website
-description: Build the website from website/ (plus generated examples) into an output directory.
+description: Build the website from website/ (plus generated examples and browser modules) into an output directory.
 
 inputs:
   output-directory:
     description: Directory to write the built website into, relative to the workspace.
     required: true
+  site-url:
+    description: >-
+      Absolute URL the site will be served from, used in the homepage's import
+      snippet. Defaults to the GitHub Pages URL derived from package.json.
+    required: false
+    default: ""
   node-version:
     description: Node.js version. Must support type stripping (>= 22.18).
     required: false
@@ -35,11 +42,16 @@ runs:
     - uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
+        cache: npm
 
-    # No `npm ci`: website/build.ts imports only in-repo sources and node:*.
+    # For TypeScript, which compiles /lib/.
+    - shell: bash
+      run: npm ci
+
     # Inputs are passed through env, never interpolated into the script, so a
-    # path cannot inject shell.
+    # value cannot inject shell.
     - shell: bash
       env:
         OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
-      run: node website/build.ts --clean --out "$OUTPUT_DIRECTORY"
+        SITE_URL: ${{ inputs.site-url }}
+      run: node website/build.ts --clean --out "$OUTPUT_DIRECTORY" --site-url "$SITE_URL"

@@ -1,0 +1,19 @@
+{
+  // Browser ES modules for the website's /lib/, emitted by website/build.ts
+  // with `--outDir <site>/lib`. Paths are relative to this file, in `etc/`.
+  //
+  // Only the modules that are pure -- no `node:*`, no `process` -- are built:
+  // `examples.ts` (it has no imports at all) and `fixtures.ts`. The package
+  // entry point `zcap-spec-examples.ts` re-exports `nodejs.ts`, so it cannot
+  // load in a browser and is deliberately not hosted.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "..",
+    "declaration": true,
+    "sourceMap": true,
+    // The .ts sources are not served, so embed them for browser devtools.
+    "inlineSources": true
+  },
+  "include": ["../examples.ts", "../fixtures.ts"]
+}

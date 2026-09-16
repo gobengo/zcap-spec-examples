@@ -25,7 +25,22 @@
     <!-- The URL placeholder below is filled in by website/build.ts from DEFAULT_ZCAP_SPEC_URL. The
          bare https://w3c-ccg.github.io/zcap-spec/ is a version index that
          redirects with JavaScript, so curl gets a page with no examples. -->
+    <h2>On the command line</h2>
     <pre><code>curl -sS %ZCAP_SPEC_URL% | npx zcap-spec-examples</code></pre>
+
+    <h2>In a web page</h2>
+    <p>
+      The library is hosted here as ES modules, so any page can import it with
+      no install and no build step. Paste this into an HTML file and open the
+      console:
+    </p>
+    <pre><code>%LIBRARY_SNIPPET%</code></pre>
+    <p class="muted">
+      Hosted modules: <a href="lib/examples.js"><code>lib/examples.js</code></a>
+      (extraction and parsing) and <a href="lib/fixtures.js"><code>lib/fixtures.js</code></a>
+      (a bundled snapshot of the spec, for use offline), each with
+      <code>.d.ts</code> types. See the <a href="docs/">API docs</a>.
+    </p>
   </main>
 </body>
 </html>
