@@ -54,6 +54,31 @@ closing tag arrives — the document is never buffered in full. When you already
 have the HTML as a string and want an array back, `extractExamplesFromHtml`
 does that synchronously.
 
+### A bundled snapshot of the spec
+
+For tests and scratch scripts, the package ships a snapshot of the zcap-spec so
+you can work against a realistic document offline, with no network call:
+
+```js
+import { extractExamplesFromHtml } from "zcap-spec-examples";
+import { zcapSpecHtml, zcapSpecSnapshot } from "zcap-spec-examples/fixtures";
+
+const examples = extractExamplesFromHtml(zcapSpecHtml);
+console.log(examples.length);              // 7
+console.log(zcapSpecSnapshot.retrievedAt); // "2026-08-14"
+console.log(zcapSpecSnapshot.sha256);      // checksum of the bytes above
+```
+
+It is deliberately a **subpath export**, so importing `extractExamples` does not
+also pull in 65 KB of HTML. `zcapSpecSnapshot` carries the provenance —
+`sourceUrl`, `retrievedAt`, `bytes`, `sha256` — so a copy can be checked against
+the original.
+
+The snapshot is embedded as a string rather than shipped as a `.html` file, so
+reading it needs no filesystem access and it works in a browser or worker like
+the rest of the library. Refresh it with `npm run fixture:update`, which
+re-fetches the spec and regenerates `fixtures.ts`.
+
 The published package ships compiled JavaScript in `dist/` (plus the original
 TypeScript source), so `npx` works on Node ≥ 20 without type stripping. Running
 from a clone still needs Node ≥ 22.18, per [Requirements](#requirements).
@@ -159,17 +184,25 @@ Each extracted example is printed as a JSON object:
   | neither | `text/plain` |
 
   Most zcap-spec examples are annotated with `//` commentary, so they come back
-  as `application/jsonc` — valid JSON with comments, not valid JSON. To parse
-  those, strip the comments first:
+  as `application/jsonc` — valid JSON with comments, not valid JSON, which means
+  `JSON.parse` throws on them. Use `parseExampleContent`, which handles every
+  JSON flavour so you do not need a JSONC parser of your own:
 
   ```js
-  import { stripJsonComments } from "./zcap-spec-examples.ts";
-  const value = JSON.parse(stripJsonComments(example.content));
+  import { parseExampleContent } from "zcap-spec-examples";
+
+  const value = parseExampleContent(example);
   ```
 
-  `stripJsonComments` is string-aware, so `//` inside a value such as
-  `"https://w3id.org/zcap/v1"` is left alone — a plain regex would truncate
-  every URL in the document.
+  It covers `application/json`, `application/jsonc`, and any `+json` type such
+  as `application/ld+json`, ignores media-type parameters, and falls back to
+  comment stripping if a direct parse fails — so mislabelled content still
+  parses. It throws a `TypeError` for types with no object representation
+  (`message/http`, `text/plain`); read `example.content` directly for those.
+
+  The underlying `stripJsonComments` is exported too. It is string-aware, so
+  `//` inside a value such as `"https://w3id.org/zcap/v1"` is left alone — a
+  plain regex would truncate every URL in the document.
 
 ### Output formats
 
@@ -199,10 +232,12 @@ zcap-spec-examples.ts        entry point: the executable script, and the
 nodejs.ts                    Node.js wiring — argv, stdin/stdout, broken pipes
 ZcapSpecExamplesCli.ts       what the CLI does, with the runtime injected
 examples.ts                  extraction and parsing — pure, zero imports
+fixtures.ts                  generated snapshot of the spec (subpath export)
 test/                        tests, discovered automatically by `node --test`
 etc/
   tsconfig.build.json        emitting build config (see `npm run build:js`)
   typedoc.json               API docs config (see `npm run docs`)
+  update-fixture.ts          regenerates fixtures.ts (`npm run fixture:update`)
   zcap-spec-examples/        sample spec HTML for manual runs
 dist/                        build output (gitignored)
 docs/                        generated API docs (gitignored)
