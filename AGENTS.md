@@ -43,6 +43,7 @@ zcap-spec-examples.ts        entry point: executable script + public re-exports
 nodejs.ts                    Node wiring: argv, stdio, EPIPE, main()
 ZcapSpecExamplesCli.ts       CLI behaviour, runtime-independent
 examples.ts                  extraction + parsing, pure, no imports at all
+fixtures.ts                  GENERATED snapshot of the spec — never hand-edit
 test/                        tests, found automatically by `node --test`
 etc/tsconfig.build.json      emitting build config
 etc/typedoc.json             API docs config
@@ -66,15 +67,27 @@ convention. New config belongs in `etc/`, new tests in `test/`.
 | `npm run tsc` | type-check only (`--noEmit`), never emits |
 | `npm run build:js` | compile to `dist/` (gitignored) |
 | `npm run docs` | TypeDoc API docs into `docs/` (gitignored) |
+| `npm run fixture:update` | re-fetch the spec and regenerate `fixtures.ts` |
 | `npm start` | run the CLI from source |
 | `npm run start:hardened` | run under `node --permission` |
 | `npm run release` | build, then publish (see the publishing trap below) |
 
-## Verify against the real document, not just fixtures
+## Verify against the real document, not just hand-made fixtures
 
-The fixtures in `etc/zcap-spec-examples/` are hand-made and do not capture
-everything the real spec does. When changing parsing, extraction, media types,
-or URLs, check against the actual document:
+`fixtures.ts` is a real snapshot of the spec, exported as
+`zcap-spec-examples/fixtures`, and the test suite asserts against it — so the
+parser is checked against genuine ReSpec output on every `npm test`, offline.
+Those assertions (7 examples, five `application/jsonc` and two
+`application/json`, absolute URLs from `edDraftURI`) are the guard rail. If a
+change breaks them, the change is almost certainly wrong.
+
+`fixtures.ts` is generated. Never hand-edit it; run `npm run fixture:update`,
+which also refreshes the recorded `retrievedAt`, `bytes`, and `sha256`. A test
+verifies the checksum still matches the embedded HTML, so a hand-edit is caught.
+
+The small fixtures in `etc/zcap-spec-examples/` are hand-made and do not capture
+everything the real spec does. To check against the *live* document (in case the
+spec itself has changed since the snapshot):
 
 ```shell
 curl -sS https://w3c-ccg.github.io/zcap-spec/ | ./zcap-spec-examples.ts | jq .
@@ -101,6 +114,10 @@ Each of these was a real bug found by testing, not a hypothetical.
   makes piped input produce absolute URLs. Resolution order is `--base-url` →
   document-declared → fetched URL → bare fragment, and document-declared
   deliberately beats the fetched URL.
+- **`parseExampleContent` is the supported way to read `example.content`.**
+  `JSON.parse` alone throws on most real examples, because they carry `//`
+  commentary. Keep it forgiving: try a direct parse, then a comment-stripped
+  one, and only then throw.
 - **Stripping JSON comments cannot be a regex.** The examples are full of
   values like `"https://w3id.org/zcap/v1"`; a naive `//` strip truncates every
   URL in the document. `stripJsonComments` is a string-aware scanner and must

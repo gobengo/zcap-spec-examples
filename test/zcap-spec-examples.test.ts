@@ -10,10 +10,26 @@ import {
   formatExample,
   formatExamplesAsJson,
   getAttribute,
+  parseExampleContent,
   stripJsonComments,
   toText,
   HELP_TEXT,
 } from "../zcap-spec-examples.ts";
+import { zcapSpecHtml, zcapSpecSnapshot } from "../fixtures.ts";
+
+/**
+ * Mirrors the library's internal rule for "this media type has an object
+ * representation". Examples that fail it (HTTP messages, plain text) are not
+ * JSON and are never expected to parse as JSON.
+ */
+function hasJsonRepresentation(mediaType: string): boolean {
+  const essence = (mediaType.split(";")[0] ?? "").trim().toLowerCase();
+  return (
+    essence === "application/json" ||
+    essence === "application/jsonc" ||
+    essence.endsWith("+json")
+  );
+}
 
 function parseNdjson(text: string): any[] {
   return text
@@ -679,4 +695,187 @@ test("extractExamples keeps memory flat on input far larger than the examples", 
   const grewMb = (peak - before) / 1024 / 1024;
   // ~42 MB streamed through. Buffering it all would show up here immediately.
   assert.ok(grewMb < 12, `heap grew ${grewMb.toFixed(1)} MB, expected well under input size`);
+});
+
+// ---------------------------------------------------------------------------
+// The bundled zcap-spec snapshot
+//
+// A real ReSpec *source* document, so these assertions cover what hand-written
+// fixtures miss: respecConfig.edDraftURI, `<pre class="example ...">` with no
+// id attributes, entity-encoded content, and JSON-with-comments bodies.
+// ---------------------------------------------------------------------------
+
+test("the bundled snapshot is intact and matches its recorded checksum", async () => {
+  const { createHash } = await import("node:crypto");
+  assert.equal(zcapSpecSnapshot.html, zcapSpecHtml);
+  assert.equal(new TextEncoder().encode(zcapSpecHtml).length, zcapSpecSnapshot.bytes);
+  assert.equal(
+    createHash("sha256").update(zcapSpecHtml, "utf8").digest("hex"),
+    zcapSpecSnapshot.sha256,
+  );
+  // Which version the snapshot was taken from changes with every release, so
+  // pin only that it is the zcap-spec and that the provenance is well formed.
+  assert.match(
+    zcapSpecSnapshot.sourceUrl,
+    /^https:\/\/w3c-ccg\.github\.io\/zcap-spec\//,
+  );
+  assert.match(zcapSpecSnapshot.retrievedAt, /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test("extractExamples on the snapshot reproduces the real spec's examples", () => {
+  const examples = extractExamplesFromHtml(zcapSpecHtml);
+
+  // The spec gains examples from release to release, so assert the shape
+  // rather than a count: ReSpec numbers example blocks in document order and
+  // the extractor mirrors that.
+  assert.ok(
+    examples.length >= 7,
+    `expected at least 7 examples, got ${examples.length}`,
+  );
+  assert.deepEqual(
+    examples.map((e) => e.name),
+    examples.map((_, i) => `example-${i + 1}`),
+  );
+  // Absolute, from respecConfig.edDraftURI -- the source HTML has no ids.
+  assert.equal(examples[4].url, `${discoverBaseUrl(zcapSpecHtml)}#example-5`);
+  // Every example is one of the media types the spec actually uses: JSON,
+  // JSON-with-commentary, or -- since v0.4.0-rc.2 -- an HTTP message.
+  for (const example of examples) {
+    assert.ok(
+      ["application/json", "application/jsonc", "message/http"].includes(
+        example.mediaType,
+      ),
+      `${example.name}: unexpected media type ${example.mediaType}`,
+    );
+  }
+  // Both kinds are present, so the JSON/non-JSON split below is exercised.
+  assert.ok(examples.some((e) => hasJsonRepresentation(e.mediaType)));
+  assert.ok(examples.some((e) => !hasJsonRepresentation(e.mediaType)));
+});
+
+test("every JSON example in the snapshot parses once comments are stripped", () => {
+  for (const example of extractExamplesFromHtml(zcapSpecHtml)) {
+    // Not every example is JSON: the HTTP invocation examples are covered by
+    // the test below, and must not be fed to JSON.parse.
+    if (!hasJsonRepresentation(example.mediaType)) continue;
+    const source =
+      example.mediaType === "application/json"
+        ? example.content
+        : stripJsonComments(example.content);
+    const value = JSON.parse(source); // throws if the extraction mangled anything
+    assert.ok("@context" in value, `${example.name} should be a JSON-LD document`);
+    // URLs inside strings must survive comment stripping intact.
+    assert.match(JSON.stringify(value), /https:\/\/w3id\.org\/zcap\/v1/);
+  }
+});
+
+test("the snapshot's HTTP examples are extracted as HTTP messages, not JSON", () => {
+  const messages = extractExamplesFromHtml(zcapSpecHtml).filter(
+    (e) => e.mediaType === "message/http",
+  );
+
+  assert.ok(messages.length > 0, "the spec should carry HTTP invocation examples");
+  for (const example of messages) {
+    assert.match(
+      example.content,
+      /^[A-Z]+ \S+ HTTP\/\d/,
+      `${example.name} should open with a request line`,
+    );
+    assert.match(
+      example.content,
+      /\nHost: /,
+      `${example.name} should carry request headers`,
+    );
+  }
+});
+
+test("streaming the snapshot yields exactly what the synchronous path does", async () => {
+  const streamed = await Array.fromAsync(extractExamples(byteStream(zcapSpecHtml, 997)));
+  assert.deepEqual(streamed, extractExamplesFromHtml(zcapSpecHtml));
+});
+
+// ---------------------------------------------------------------------------
+// parseExampleContent
+// ---------------------------------------------------------------------------
+
+test("parseExampleContent parses strict JSON and JSONC alike", () => {
+  assert.deepEqual(
+    parseExampleContent({ content: '{"a": 1}', mediaType: "application/json" }),
+    { a: 1 },
+  );
+  assert.deepEqual(
+    parseExampleContent({
+      content: '{\n // note\n "a": 1\n}',
+      mediaType: "application/jsonc",
+    }),
+    { a: 1 },
+  );
+});
+
+test("parseExampleContent accepts any +json structured suffix, and ignores parameters", () => {
+  assert.deepEqual(
+    parseExampleContent({ content: '{"@context": "x"}', mediaType: "application/ld+json" }),
+    { "@context": "x" },
+  );
+  assert.deepEqual(
+    parseExampleContent({ content: '{"a": 1}', mediaType: "application/json; charset=utf-8" }),
+    { a: 1 },
+  );
+  assert.deepEqual(
+    parseExampleContent({ content: '{"a": 1}', mediaType: "APPLICATION/JSON" }),
+    { a: 1 },
+  );
+});
+
+test("parseExampleContent still parses content that is mislabelled as strict JSON", () => {
+  // Labelled json but actually commented: fall back rather than throwing.
+  assert.deepEqual(
+    parseExampleContent({ content: '{"a": 1} // oops', mediaType: "application/json" }),
+    { a: 1 },
+  );
+});
+
+test("parseExampleContent does not corrupt URLs while falling back", () => {
+  const value = parseExampleContent<{ id: string }>({
+    content: '{"id": "https://example.com/a//b"} // trailing',
+    mediaType: "application/jsonc",
+  });
+  assert.equal(value.id, "https://example.com/a//b");
+});
+
+test("parseExampleContent rejects media types with no object representation", () => {
+  assert.throws(
+    () => parseExampleContent({ content: "GET / HTTP/1.1", mediaType: "message/http" }),
+    { name: "TypeError", message: /no object representation/ },
+  );
+  assert.throws(
+    () => parseExampleContent({ content: "just prose", mediaType: "text/plain" }),
+    { name: "TypeError", message: /read example\.content directly/ },
+  );
+});
+
+test("parseExampleContent reports unparseable JSON as a SyntaxError", () => {
+  assert.throws(
+    () => parseExampleContent({ content: "{not json", mediaType: "application/json" }),
+    { name: "SyntaxError", message: /did not parse as JSON, with or without comments/ },
+  );
+});
+
+test("parseExampleContent handles every example in the bundled spec snapshot", () => {
+  const examples = extractExamplesFromHtml(zcapSpecHtml);
+  assert.ok(examples.length >= 7);
+  for (const example of examples) {
+    if (!hasJsonRepresentation(example.mediaType)) {
+      // An HTTP message has no object representation, and saying so is the
+      // documented behaviour -- callers are pointed at example.content.
+      assert.throws(() => parseExampleContent(example), { name: "TypeError" });
+      continue;
+    }
+    const value = parseExampleContent<Record<string, unknown>>(example);
+    assert.ok(
+      value && typeof value === "object",
+      `${example.name} should parse to an object`,
+    );
+    assert.ok("@context" in value, `${example.name} should have @context`);
+  }
 });

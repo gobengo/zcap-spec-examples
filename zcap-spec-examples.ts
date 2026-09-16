@@ -5,13 +5,13 @@
  *
  * This module is both a command-line tool and a small library with no runtime
  * dependencies. If you are here to use the JavaScript API, you almost certainly
- * want {@link extractExamples}, and then {@link stripJsonComments} to parse
+ * want {@link extractExamples}, and then {@link parseExampleContent} to read
  * what it gives back.
  *
  * ## Quick start
  *
- * Give {@link extractExamples} a string of HTML and get back an array of
- * {@link ZcapSpecExample} objects:
+ * Give {@link extractExamples} a response, a stream, or a string of HTML, and
+ * get {@link ZcapSpecExample} objects back one at a time:
  *
  * ```js
  * import { extractExamples } from "zcap-spec-examples";
@@ -33,23 +33,25 @@
  *
  * ## Parsing an example's content
  *
- * Do **not** assume `example.content` is valid JSON. Most zcap-spec examples are
+ * Do **not** call `JSON.parse(example.content)`. Most zcap-spec examples are
  * annotated with `//` comments, which makes them JSONC, not JSON — that is what
- * the `"application/jsonc"` media type means. Check `mediaType`, and run the
- * content through {@link stripJsonComments} before parsing:
+ * the `"application/jsonc"` media type means, and `JSON.parse` throws on them.
+ *
+ * Use {@link parseExampleContent}, which handles both and saves you bringing a
+ * JSONC parser of your own:
  *
  * ```js
- * import { extractExamples, stripJsonComments } from "zcap-spec-examples";
+ * import { extractExamples, parseExampleContent } from "zcap-spec-examples";
  *
  * for await (const example of extractExamples(response)) {
- *   if (example.mediaType === "application/json") {
- *     console.log(JSON.parse(example.content));
- *   } else if (example.mediaType === "application/jsonc") {
- *     console.log(JSON.parse(stripJsonComments(example.content)));
- *   }
- *   // anything else is not JSON at all -- e.g. "message/http"
+ *   const capability = parseExampleContent(example);
+ *   console.log(capability["@context"]);
  * }
  * ```
+ *
+ * It throws a `TypeError` for media types with no object representation, such
+ * as `"message/http"` — read `example.content` directly for those. If you only
+ * want the comment stripping, {@link stripJsonComments} is exported too.
  *
  * ## Where the URLs come from
  *

@@ -651,6 +651,85 @@ export function stripJsonComments(text: string): string {
   return out;
 }
 
+/**
+ * Media types whose content is JSON of some flavour, and so has an object
+ * representation. Covers any `+json` structured suffix, so `application/ld+json`
+ * and friends are handled without listing each one.
+ */
+function isJsonMediaType(mediaType: string): boolean {
+  return (
+    mediaType === "application/json" ||
+    mediaType === "application/jsonc" ||
+    mediaType.endsWith("+json")
+  );
+}
+
+/**
+ * Parse an example's `content` into a JavaScript value.
+ *
+ * Saves callers from having to care whether a given example is strict JSON or
+ * JSON-with-comments, and from pulling in a JSONC parser to find out. Most
+ * zcap-spec examples are annotated with `//` commentary and so are *not* valid
+ * JSON — `JSON.parse(example.content)` throws on them, which is the trap this
+ * exists to remove.
+ *
+ * Handles `application/json`, `application/jsonc`, and any `+json` type such as
+ * `application/ld+json`. Media-type parameters (`; charset=utf-8`) are ignored.
+ * Comments are stripped only if a direct parse fails, so a correctly-labelled
+ * document is never rewritten unnecessarily — and a mislabelled one still parses.
+ *
+ * @param example - Any object with `content` and `mediaType`, such as a
+ * {@link ZcapSpecExample}.
+ * @typeParam T - What you expect back. Unchecked, exactly like `JSON.parse`;
+ * defaults to `unknown` so the cast is your decision.
+ * @returns The parsed value.
+ * @throws {TypeError} If the media type has no object representation (for
+ * example `message/http` or `text/plain`) — read `example.content` instead.
+ * @throws {SyntaxError} If the content is that media type but does not parse.
+ *
+ * @example Parse every example, whatever flavour it is
+ * ```js
+ * for (const example of extractExamplesFromHtml(zcapSpecHtml)) {
+ *   const value = parseExampleContent(example);
+ *   console.log(value["@context"]);
+ * }
+ * ```
+ *
+ * @example Tell TypeScript what you expect
+ * ```ts
+ * const capability = parseExampleContent<{ "@context": string | string[] }>(example);
+ * ```
+ *
+ * @category Working with example content
+ */
+export function parseExampleContent<T = unknown>(
+  example: Pick<ZcapSpecExample, "content" | "mediaType">,
+): T {
+  const mediaType = (example.mediaType.split(";")[0] ?? "").trim().toLowerCase();
+
+  if (!isJsonMediaType(mediaType)) {
+    throw new TypeError(
+      `parseExampleContent: "${example.mediaType}" has no object representation; ` +
+        "read example.content directly",
+    );
+  }
+
+  try {
+    return JSON.parse(example.content) as T;
+  } catch (directError) {
+    // Not strict JSON. The usual reason is `//` commentary, so try again
+    // without it before giving up.
+    try {
+      return JSON.parse(stripJsonComments(example.content)) as T;
+    } catch {
+      throw new SyntaxError(
+        `parseExampleContent: content labelled "${example.mediaType}" did not parse ` +
+          `as JSON, with or without comments: ${(directError as Error).message}`,
+      );
+    }
+  }
+}
+
 function isJson(text: string): boolean {
   try {
     JSON.parse(text);
