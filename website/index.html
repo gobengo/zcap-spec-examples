@@ -3,44 +3,62 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The page renders a document fetched from a user-supplied ?url=. Everything
+       is escaped, but no inline script is allowed either, as a backstop. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src *; img-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+  <!-- Filled in by website/build.ts from DEFAULT_ZCAP_SPEC_URL; app.js
+       redirects to ?url=<this> when no ?url= is given. -->
+  <meta name="zcap-spec-examples:default-url" content="%ZCAP_SPEC_URL%">
   <title>zcap-spec-examples</title>
   <link rel="stylesheet" href="style.css">
+  <script type="module" src="app/website/app.js"></script>
 </head>
 <body>
   <header>
-    <nav><a href="./">zcap-spec-examples</a> · <a href="examples/">Examples</a> · <a href="docs/">API docs</a></nav>
-    <h1>zcap-spec-examples</h1>
+    <nav><a href="./">zcap-spec-examples</a> · <a href="#usage">Usage</a> · <a href="examples/">Snapshot examples</a> · <a href="docs/">API docs</a> · <a href="https://github.com/gobengo/zcap-spec-examples">Repository</a></nav>
+    <h1 id="zcap-spec-examples"><a href="#zcap-spec-examples">zcap-spec-examples</a></h1>
     <p>
       Extracts the examples from the
       <a href="https://w3c-ccg.github.io/zcap-spec/">Authorization Capabilities (zcap) spec</a>
       and prints them as NDJSON, so every example can be checked and built on.
     </p>
+    <form id="spec-form" class="spec-form" action="./" method="get">
+      <label for="spec-url">Spec URL</label>
+      <input id="spec-url" name="url" type="url" required placeholder="%ZCAP_SPEC_URL%">
+      <button type="submit">Extract examples</button>
+    </form>
+    <p id="spec-status" class="status" role="status" aria-live="polite">
+      <noscript>This page fetches the spec in your browser, which needs JavaScript. The
+      <a href="examples/">snapshot examples</a> page works without it.</noscript>
+    </p>
   </header>
   <main>
-    <ul class="cards">
-      <li><a href="examples/"><strong>Examples</strong><span>Each example in the spec, described and parsed.</span></a></li>
-      <li><a href="docs/"><strong>API docs</strong><span>The library's TypeScript API.</span></a></li>
-      <li><a href="https://github.com/gobengo/zcap-spec-examples"><strong>Repository</strong><span>Source, README, and issues.</span></a></li>
-    </ul>
+    <nav aria-label="Examples">
+      <ol id="examples-toc"></ol>
+    </nav>
+    <div id="examples"></div>
+
     <!-- The URL placeholder below is filled in by website/build.ts from DEFAULT_ZCAP_SPEC_URL. The
          bare https://w3c-ccg.github.io/zcap-spec/ is a version index that
          redirects with JavaScript, so curl gets a page with no examples. -->
-    <h2>On the command line</h2>
-    <pre><code>curl -sS %ZCAP_SPEC_URL% | npx zcap-spec-examples</code></pre>
+    <section id="usage" class="usage">
+      <h2 id="cli"><a href="#cli">On the command line</a></h2>
+      <pre><code>curl -sS %ZCAP_SPEC_URL% | npx zcap-spec-examples</code></pre>
 
-    <h2>In a web page</h2>
-    <p>
-      The library is hosted here as ES modules, so any page can import it with
-      no install and no build step. Paste this into an HTML file and open the
-      console:
-    </p>
-    <pre><code>%LIBRARY_SNIPPET%</code></pre>
-    <p class="muted">
-      Hosted modules: <a href="lib/examples.js"><code>lib/examples.js</code></a>
-      (extraction and parsing) and <a href="lib/fixtures.js"><code>lib/fixtures.js</code></a>
-      (a bundled snapshot of the spec, for use offline), each with
-      <code>.d.ts</code> types. See the <a href="docs/">API docs</a>.
-    </p>
+      <h2 id="web"><a href="#web">In a web page</a></h2>
+      <p>
+        The library is hosted here as ES modules, so any page can import it with
+        no install and no build step. Paste this into an HTML file and open the
+        console:
+      </p>
+      <pre><code>%LIBRARY_SNIPPET%</code></pre>
+      <p class="muted">
+        Hosted modules: <a href="lib/examples.js"><code>lib/examples.js</code></a>
+        (extraction and parsing) and <a href="lib/fixtures.js"><code>lib/fixtures.js</code></a>
+        (a bundled snapshot of the spec, for use offline), each with
+        <code>.d.ts</code> types. See the <a href="docs/">API docs</a>.
+      </p>
+    </section>
   </main>
 </body>
 </html>

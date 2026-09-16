@@ -1,0 +1,19 @@
+{
+  // The homepage's script, emitted by website/build.ts with `--outDir <site>/app`.
+  // Paths are relative to this file, in `etc/`.
+  //
+  // `rootDir` is the repo, so the emitted tree mirrors the sources and the
+  // relative imports in website/app.ts still resolve: the page loads
+  // app/website/app.js, which imports ./describe.js and ../examples.js.
+  //
+  // Not emitted into /lib/: that directory is a public API, and this is not.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "..",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "sourceMap": true,
+    "inlineSources": true
+  },
+  "include": ["../website/app.ts"]
+}

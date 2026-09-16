@@ -10,6 +10,7 @@
 #   <output-directory>/             static files copied from website/
 #   <output-directory>/examples/    generated from the zcap-spec snapshot in fixtures.ts
 #   <output-directory>/lib/         the library as browser ES modules, importable from any page
+#   <output-directory>/app/         the homepage script, which renders the spec at ?url=
 #
 # The API docs are a separate action (build-docs); gh-pages.yml puts them at
 # <output-directory>/docs/. Knows nothing about where the output goes.

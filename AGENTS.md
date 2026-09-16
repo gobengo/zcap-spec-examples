@@ -55,6 +55,9 @@ etc/zcap-spec-examples/      sample spec HTML for manual runs
 .github/actions/build-docs/  reusable action: tsc + TypeDoc into a directory
 .github/actions/build-website/  reusable action: website/ + /examples/ + /lib/ into a directory
 website/                     static site source; build.ts generates /examples/
+website/describe.ts          describes + renders examples as HTML; pure, shared by build.ts and app.ts
+website/app.ts               homepage script: ?url= → fetch → extract → render, in the browser
+etc/tsconfig.website-app.json  emits website/app.ts into the site's /app/
 ```
 
 Imports between these use explicit `.ts` extensions so the code runs with no
@@ -225,6 +228,14 @@ action into `build/website/`, the `build-docs` action into
   `https://gobengo.github.io/zcap-spec-examples/lib/examples.js`, so renaming
   or moving it breaks them. Only pure modules go there (see
   `etc/tsconfig.website.json`): nothing that imports `node:*` or `nodejs.ts`.
+- **The homepage renders untrusted input.** `/` fetches whatever `?url=`
+  names and renders its examples, so a link can point it at a hostile
+  document. `website/describe.ts` escapes every value and emits `href`s only
+  through `safeHref` (http/https), because an example's URL is resolved
+  against a base the *document* declares and can be `javascript:`. The page's
+  CSP (no inline script) is a backstop, not the defence; do not loosen either.
+- **`/app/` is not `/lib/`.** The homepage script is compiled separately, with
+  its own copy of `examples.js`, so `/lib/` stays exactly the public API.
 - **Keep all site links relative.** Project Pages serve from
   `/zcap-spec-examples/`, so a root-absolute path would 404. TypeDoc's default
   output is relative; verify with a subpath server if you change the theme.
