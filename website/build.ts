@@ -10,15 +10,17 @@
  *
  * 1. Copies every file in `website/` except `.ts` sources (so `index.html`,
  *    `style.css`, ... are served as-is), then fills `%ZCAP_SPEC_URL%` in
- *    `index.html` with the CLI's default spec URL.
+ *    `index.html` with the CLI's default spec URL and
+ *    `%WEBSITE_DEFAULT_SPEC_URL%` with the homepage's.
  * 2. Generates `examples/index.html`, describing each example extracted from
  *    the bundled zcap-spec snapshot in `fixtures.ts`.
  * 3. Compiles the library's browser-safe modules (`examples.ts`,
  *    `fixtures.ts`) to ES modules in `lib/`, importable from any web page,
  *    and fills `%LIBRARY_SNIPPET%` in `index.html` with a script that does so.
  * 4. Compiles the homepage's script, `website/app.ts`, into `app/`. It reads
- *    `?url=` (defaulting it to the CLI's spec URL), fetches that spec in the
- *    browser, and renders its examples with the same code as `/examples/`.
+ *    `?url=` (defaulting it to the zcap-spec's version index), fetches that
+ *    spec in the browser, following an index to its latest version, and
+ *    renders its examples with the same code as `/examples/`.
  *
  * `--site-url` is the absolute URL the site will be served from, used in that
  * snippet. It defaults to the GitHub Pages URL derived from `repository` in
@@ -44,6 +46,14 @@ import { escapeHtml, renderExampleSection, renderExampleTocItem } from "./descri
 
 // Kept exported from here too, for anything that already imported them from build.ts.
 export { describeExample, type ExampleDescription } from "./describe.ts";
+
+/**
+ * The spec URL the homepage loads when given no `?url=`: the zcap-spec's
+ * version index. Unlike the CLI, the homepage resolves an index to the latest
+ * version it lists (see `website/latest-version.ts`), so it can track releases
+ * instead of pinning one.
+ */
+export const WEBSITE_DEFAULT_SPEC_URL = "https://w3c-ccg.github.io/zcap-spec/";
 
 const websiteDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(websiteDir, "..");
@@ -177,13 +187,16 @@ export function build(
     filter: (source) => extname(source) !== ".ts",
   });
 
-  // Use the CLI's default URL, not the bare https://w3c-ccg.github.io/zcap-spec/:
-  // that is a version index which redirects with JavaScript, so piping it
-  // through the CLI yields nothing. One constant keeps the two in step.
+  // The CLI snippet uses the CLI's default URL, not the bare
+  // https://w3c-ccg.github.io/zcap-spec/: that is a version index which
+  // redirects with JavaScript, so piping it through the CLI yields nothing.
+  // The homepage itself defaults to the index, and app.ts follows it to the
+  // latest version.
   const indexPath = resolve(out, "index.html");
   let index = readFileSync(indexPath, "utf8");
   const placeholders: Record<string, string> = {
     "%ZCAP_SPEC_URL%": escapeHtml(DEFAULT_ZCAP_SPEC_URL),
+    "%WEBSITE_DEFAULT_SPEC_URL%": escapeHtml(WEBSITE_DEFAULT_SPEC_URL),
     "%LIBRARY_SNIPPET%": escapeHtml(librarySnippet(siteUrl, DEFAULT_ZCAP_SPEC_URL)),
   };
   for (const [placeholder, value] of Object.entries(placeholders)) {

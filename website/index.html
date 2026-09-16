@@ -6,9 +6,10 @@
   <!-- The page renders a document fetched from a user-supplied ?url=. Everything
        is escaped, but no inline script is allowed either, as a backstop. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src *; img-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
-  <!-- Filled in by website/build.ts from DEFAULT_ZCAP_SPEC_URL; app.js
-       redirects to ?url=<this> when no ?url= is given. -->
-  <meta name="zcap-spec-examples:default-url" content="%ZCAP_SPEC_URL%">
+  <!-- Filled in by website/build.ts from WEBSITE_DEFAULT_SPEC_URL; app.js
+       redirects to ?url=<this> when no ?url= is given, and follows a version
+       index to its latest version. -->
+  <meta name="zcap-spec-examples:default-url" content="%WEBSITE_DEFAULT_SPEC_URL%">
   <title>zcap-spec-examples</title>
   <link rel="stylesheet" href="style.css">
   <script type="module" src="app/website/app.js"></script>
@@ -24,7 +25,7 @@
     </p>
     <form id="spec-form" class="spec-form" action="./" method="get">
       <label for="spec-url">Spec URL</label>
-      <input id="spec-url" name="url" type="url" required placeholder="%ZCAP_SPEC_URL%">
+      <input id="spec-url" name="url" type="url" required placeholder="%WEBSITE_DEFAULT_SPEC_URL%">
       <button type="submit">Extract examples</button>
     </form>
     <p id="spec-status" class="status" role="status" aria-live="polite">
