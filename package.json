@@ -50,7 +50,7 @@
     "start": "node zcap-spec-examples.ts",
     "start:hardened": "node --permission zcap-spec-examples.ts",
     "tsc": "tsc --noEmit",
-    "build:js": "tsc --project etc/tsconfig.build.json",
+    "build:js": "tsc --project etc/tsconfig.build.json && node -e \"fs.chmodSync('dist/zcap-spec-examples.js', 0o755)\"",
     "docs": "typedoc --options etc/typedoc.json",
     "build:website": "node website/build.ts --clean --out build/website",
     "build:gh-pages": "npm run build:website && npm run tsc && typedoc --options etc/typedoc.json --out build/website/docs",

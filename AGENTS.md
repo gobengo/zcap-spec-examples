@@ -131,6 +131,11 @@ Each of these was a real bug found by testing, not a hypothetical.
   stay one.
 - **Broken pipes are normal.** `... | head -1` closes stdout early. The CLI
   swallows `EPIPE` and exits quietly; do not reintroduce an unhandled write.
+- **`build:js` must leave `dist/zcap-spec-examples.js` executable.** `tsc`
+  writes files without the executable bit. An installed package is fine (npm
+  sets the bit on bins it installs), but `npm link` symlinks straight to
+  `dist/`, so a clean rebuild made the linked command fail with
+  `Permission denied`. The `chmod` in `build:js` is why; keep it.
 - **`npx` invokes through a symlink.** `node_modules/.bin/<name>` is a symlink,
   so `process.argv[1]` is the link path while `import.meta.url` is the resolved
   target. Comparing them naively makes `main()` silently never run — the CLI
