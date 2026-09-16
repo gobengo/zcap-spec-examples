@@ -17,7 +17,10 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
-const CANONICAL_URL = "https://w3c-ccg.github.io/zcap-spec/";
+import { DEFAULT_ZCAP_SPEC_URL } from "../ZcapSpecExamplesCli.ts";
+
+// The CLI's default, so the snapshot and a bare `zcap-spec-examples` run agree.
+const CANONICAL_URL = DEFAULT_ZCAP_SPEC_URL;
 
 const { values } = parseArgs({
   options: {

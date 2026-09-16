@@ -16,7 +16,7 @@
  * ```js
  * import { extractExamples } from "zcap-spec-examples";
  *
- * const response = await fetch("https://w3c-ccg.github.io/zcap-spec/");
+ * const response = await fetch("https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/");
  *
  * for await (const example of extractExamples(response)) {
  *   console.log(example.name);      // "example-1"

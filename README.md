@@ -23,7 +23,7 @@ Published to npm, so it can be run without installing anything:
 
 ```shell
 npx zcap-spec-examples --help
-curl -sS https://w3c-ccg.github.io/zcap-spec/ | npx zcap-spec-examples | jq -r .url
+curl -sS https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/ | npx zcap-spec-examples | jq -r .url
 ```
 
 It can also be run straight from the repository, which builds it on install:
@@ -41,7 +41,7 @@ npm install zcap-spec-examples
 ```js
 import { extractExamples, stripJsonComments } from "zcap-spec-examples";
 
-const response = await fetch("https://w3c-ccg.github.io/zcap-spec/");
+const response = await fetch("https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/");
 
 for await (const example of extractExamples(response)) {
   console.log(example.name, example.url, example.mediaType);
@@ -97,7 +97,7 @@ somewhere along the way; restore it with `chmod +x ./zcap-spec-examples.ts`.
 ## Usage
 
 Running `./zcap-spec-examples.ts` with no arguments fetches the spec from
-<https://w3c-ccg.github.io/zcap-spec/>, parses the examples, and prints them
+<https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/>, parses the examples, and prints them
 to stdout.
 
 - `--help` shows help text in docopt format.
@@ -118,7 +118,7 @@ Since it reads stdin, any other tool can supply the HTML — for example `curl`,
 so that this script never touches the network itself:
 
 ```shell
-curl -sS https://w3c-ccg.github.io/zcap-spec/ | ./zcap-spec-examples.ts
+curl -sS https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/ | ./zcap-spec-examples.ts
 ```
 
 Piped input still produces **absolute** example URLs. zcap-spec is a ReSpec
@@ -127,7 +127,7 @@ document, and ReSpec runs in the browser — so what `curl` fetches is the spec
 says where the spec is published, so it is used as the base URL:
 
 ```shell
-curl -sS https://w3c-ccg.github.io/zcap-spec/ | ./zcap-spec-examples.ts | jq -r .url
+curl -sS https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/ | ./zcap-spec-examples.ts | jq -r .url
 # https://w3c-ccg.github.io/zcap-spec/#example-1
 # https://w3c-ccg.github.io/zcap-spec/#example-2
 # ...
@@ -408,7 +408,7 @@ this tool needs very little. Run it with `--permission` and grant nothing:
 
 ```shell
 # no filesystem, no subprocesses, and no network needed at all
-curl -sS https://w3c-ccg.github.io/zcap-spec/ | node --permission ./zcap-spec-examples.ts
+curl -sS https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/ | node --permission ./zcap-spec-examples.ts
 ```
 
 `npm run start:hardened` runs the fetching mode the same way.

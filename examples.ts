@@ -268,7 +268,7 @@ export interface ExtractExamplesOptions {
  *
  * @example Extract examples from the live spec
  * ```js
- * const html = await (await fetch("https://w3c-ccg.github.io/zcap-spec/")).text();
+ * const html = await (await fetch("https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/")).text();
  * const examples = extractExamples(html);
  * console.log(examples.length); // 7
  * console.log(examples[0].url); // "https://w3c-ccg.github.io/zcap-spec/#example-1"
@@ -460,7 +460,7 @@ function findCloseIndexOrNull(
  *
  * @example Stream straight from a fetch, without buffering the document
  * ```js
- * const response = await fetch("https://w3c-ccg.github.io/zcap-spec/");
+ * const response = await fetch("https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/");
  *
  * for await (const example of extractExamples(response)) {
  *   console.log(example.name, example.url, example.mediaType);

@@ -22,7 +22,10 @@
       <li><a href="docs/"><strong>API docs</strong><span>The library's TypeScript API.</span></a></li>
       <li><a href="https://github.com/gobengo/zcap-spec-examples"><strong>Repository</strong><span>Source, README, and issues.</span></a></li>
     </ul>
-    <pre><code>curl -sS https://w3c-ccg.github.io/zcap-spec/ | npx zcap-spec-examples</code></pre>
+    <!-- The URL placeholder below is filled in by website/build.ts from DEFAULT_ZCAP_SPEC_URL. The
+         bare https://w3c-ccg.github.io/zcap-spec/ is a version index that
+         redirects with JavaScript, so curl gets a page with no examples. -->
+    <pre><code>curl -sS %ZCAP_SPEC_URL% | npx zcap-spec-examples</code></pre>
   </main>
 </body>
 </html>

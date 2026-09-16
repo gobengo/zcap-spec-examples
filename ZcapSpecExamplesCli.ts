@@ -22,7 +22,14 @@ import {
 // Shared types
 // ---------------------------------------------------------------------------
 
-export const DEFAULT_ZCAP_SPEC_URL = "https://w3c-ccg.github.io/zcap-spec/";
+/**
+ * Where the CLI fetches the spec from when given no `--url` and no stdin.
+ *
+ * Deliberately a versioned path, not the bare `https://w3c-ccg.github.io/zcap-spec/`: that is now
+ * a version index which redirects to the latest release with JavaScript, so a
+ * plain fetch of it (or `curl`) gets a page with no examples in it.
+ */
+export const DEFAULT_ZCAP_SPEC_URL = "https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/";
 
 export type ZcapSpecExamplesOutputFormat = "json" | "ndjson" | "text";
 

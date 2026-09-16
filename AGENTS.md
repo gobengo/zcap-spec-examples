@@ -97,7 +97,7 @@ everything the real spec does. To check against the *live* document (in case the
 spec itself has changed since the snapshot):
 
 ```shell
-curl -sS https://w3c-ccg.github.io/zcap-spec/ | ./zcap-spec-examples.ts | jq .
+curl -sS https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/ | ./zcap-spec-examples.ts | jq .
 ```
 
 At time of writing that yields exactly 7 examples: `example-1` through

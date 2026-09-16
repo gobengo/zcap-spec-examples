@@ -9,7 +9,8 @@
  * It does two things:
  *
  * 1. Copies every file in `website/` except `.ts` sources (so `index.html`,
- *    `style.css`, ... are served as-is).
+ *    `style.css`, ... are served as-is), then fills `%ZCAP_SPEC_URL%` in
+ *    `index.html` with the CLI's default spec URL.
  * 2. Generates `examples/index.html`, describing each example extracted from
  *    the bundled zcap-spec snapshot in `fixtures.ts`.
  *
@@ -19,7 +20,7 @@
  *
  * Zero dependencies, runs via type stripping, same as the CLI.
  */
-import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -30,6 +31,7 @@ import {
   type ZcapSpecExample,
 } from "../examples.ts";
 import { zcapSpecSnapshot } from "../fixtures.ts";
+import { DEFAULT_ZCAP_SPEC_URL } from "../ZcapSpecExamplesCli.ts";
 
 const websiteDir = dirname(fileURLToPath(import.meta.url));
 
@@ -327,6 +329,16 @@ export function build(outDir: string, { clean = false }: { clean?: boolean } = {
     recursive: true,
     filter: (source) => extname(source) !== ".ts",
   });
+
+  // Use the CLI's default URL, not the bare https://w3c-ccg.github.io/zcap-spec/:
+  // that is a version index which redirects with JavaScript, so piping it
+  // through the CLI yields nothing. One constant keeps the two in step.
+  const indexPath = resolve(out, "index.html");
+  const index = readFileSync(indexPath, "utf8");
+  if (!index.includes("%ZCAP_SPEC_URL%")) {
+    throw new Error(`${indexPath}: expected a %ZCAP_SPEC_URL% placeholder`);
+  }
+  writeFileSync(indexPath, index.replaceAll("%ZCAP_SPEC_URL%", escapeHtml(DEFAULT_ZCAP_SPEC_URL)));
 
   const examples = extractExamplesFromHtml(zcapSpecSnapshot.html);
   mkdirSync(resolve(out, "examples"), { recursive: true });
