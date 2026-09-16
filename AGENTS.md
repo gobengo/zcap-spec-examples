@@ -47,8 +47,13 @@ fixtures.ts                  GENERATED snapshot of the spec — never hand-edit
 test/                        tests, found automatically by `node --test`
 etc/tsconfig.build.json      emitting build config
 etc/typedoc.json             API docs config
+etc/serve-gh-pages.ts        local server that mimics GitHub Pages (`npm run dev`)
 etc/zcap-spec-examples/      sample spec HTML for manual runs
-.github/workflows/docs.yml   builds docs and publishes them to GitHub Pages
+.github/workflows/gh-pages.yml  the only Pages publisher: website + docs in one artifact
+.github/workflows/docs.yml   checks that the docs build (no publishing)
+.github/actions/build-docs/  reusable action: tsc + TypeDoc into a directory
+.github/actions/build-website/  reusable action: website/ + /examples/ into a directory
+website/                     static site source; build.ts generates /examples/
 ```
 
 Imports between these use explicit `.ts` extensions so the code runs with no
@@ -67,6 +72,8 @@ convention. New config belongs in `etc/`, new tests in `test/`.
 | `npm run tsc` | type-check only (`--noEmit`), never emits |
 | `npm run build:js` | compile to `dist/` (gitignored) |
 | `npm run docs` | TypeDoc API docs into `docs/` (gitignored) |
+| `npm run build:gh-pages` | exactly what `gh-pages.yml` publishes, into `build/website/` (gitignored) |
+| `npm run dev` | `build:gh-pages`, then serve it like GitHub Pages at `http://127.0.0.1:4000/zcap-spec-examples/` |
 | `npm run fixture:update` | re-fetch the spec and regenerate `fixtures.ts` |
 | `npm start` | run the CLI from source |
 | `npm run start:hardened` | run under `node --permission` |
@@ -186,19 +193,30 @@ Related: `isMainModule()` prefers `import.meta.main` precisely because it needs
 no filesystem access, so it keeps working under `--permission`. The
 `realpathSync` branch is only a fallback for Node versions without it.
 
-## Publishing docs
+## Publishing to GitHub Pages
 
-`.github/workflows/docs.yml` runs `npm ci && npm run tsc && npm run docs` and
-uploads `docs/` to GitHub Pages on every push to `main`. Things to preserve:
+`.github/workflows/gh-pages.yml` builds the site with the `build-website`
+action into `build/website/`, the `build-docs` action into
+`build/website/docs/`, and uploads that one directory to Pages on every push to
+`main`. `docs.yml` runs `build-docs` only as a check. Things to preserve:
 
-- **`docs/` stays gitignored.** The workflow uploads the build artifact
-  directly; nothing generated is committed, and there is no `gh-pages` branch.
-- **`npm ci` does not build `dist/`** here, because `.npmrc` sets
+- **Only `gh-pages.yml` uploads to Pages.** A deployment replaces the whole
+  site, so a second publisher would silently overwrite the first. New content
+  goes into the site via a build action, not a new deploy.
+- **Build actions don't know about Pages.** They take an `output-directory`
+  and write there; where it is served is the workflow's decision.
+- **`npm run build:gh-pages` mirrors `gh-pages.yml`.** Change one, change the
+  other, so `npm run dev` keeps previewing what actually ships.
+- **Pass action inputs to `run:` through `env`**, never `${{ }}` inside the
+  script, so a path cannot inject shell.
+- **`docs/` and `build/` stay gitignored.** Nothing generated is committed, and
+  there is no `gh-pages` branch.
+- **`npm ci` does not build `dist/`** in CI, because `.npmrc` sets
   `ignore-scripts=true` and so `prepare` is skipped. That is fine — TypeDoc
-  reads the `.ts` sources. Do not add a build step to "fix" it.
-- **The `path:` in the workflow must match `out` in `etc/typedoc.json`.**
-- **Keep TypeDoc's links relative.** Project Pages serve from
-  `/zcap-spec-examples/`, so a root-absolute asset path would 404. The default
+  and `website/build.ts` read the `.ts` sources. Do not add a build step to
+  "fix" it.
+- **Keep all site links relative.** Project Pages serve from
+  `/zcap-spec-examples/`, so a root-absolute path would 404. TypeDoc's default
   output is relative; verify with a subpath server if you change the theme.
 - Only first-party `actions/*` are used. Prefer keeping it that way, and
   SHA-pin them if you want to match the npm pinning strictness.

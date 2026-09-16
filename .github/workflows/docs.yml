@@ -1,32 +1,17 @@
-# Publish the TypeDoc API documentation to GitHub Pages.
+# Check that the TypeDoc API docs build (type-check included).
 #
-# One-time repository setup: Settings -> Pages -> "Build and deployment" ->
-# Source: **GitHub Actions**. Without that, this workflow runs but nothing is
-# served.
-#
-# Every action used here is first-party (owned by the `actions` org). If you
-# want to match the strictness of the npm dependency pinning, replace each
-# `@vN` tag with a full commit SHA.
+# This only builds; it does not publish. Publishing to GitHub Pages happens in
+# gh-pages.yml, which uses the same .github/actions/build-docs action.
 name: Docs
 
 on:
   push:
     branches: [main]
-  # Lets you republish from the Actions tab without pushing a commit.
+  pull_request:
   workflow_dispatch:
 
-# Least privilege: read the repo, and mint the token Pages deployment needs.
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-# Never run two deployments at once. `cancel-in-progress: false` so a run that
-# is already publishing is allowed to finish rather than leaving Pages half
-# updated.
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
   build:
@@ -34,38 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          # Matches the floor in package.json "engines".
-          node-version: "22"
-          cache: npm
-
-      # `npm ci` (not `npm install`) for a reproducible tree from the lockfile.
-      #
-      # Note: .npmrc sets ignore-scripts=true, so the `prepare` script does NOT
-      # run here and `dist/` is never built. That is correct -- `npm run docs`
-      # reads the TypeScript sources directly and needs nothing compiled.
-      - run: npm ci
-
-      # Fail before publishing if the sources do not type-check, since TypeDoc
-      # reads the same types it documents.
-      - run: npm run tsc
-
-      - run: npm run docs
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+      - uses: ./.github/actions/build-docs
         with:
           # Matches "out" in etc/typedoc.json.
-          path: docs
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          output-directory: docs

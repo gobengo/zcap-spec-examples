@@ -1,0 +1,77 @@
+# The one place that publishes to GitHub Pages.
+#
+# A repository has a single Pages site, and each deployment replaces it
+# entirely, so everything served is assembled here into one artifact:
+#
+#   /           website/ and /examples/   (.github/actions/build-website)
+#   /docs/      TypeDoc API docs          (.github/actions/build-docs)
+#
+# The build actions only write to a directory; neither knows about Pages.
+# Do not add Pages uploads to any other workflow -- they would overwrite this.
+#
+# To preview locally: `npm run dev` runs the same builds (`build:gh-pages`) and
+# serves the result the way Pages does, under /zcap-spec-examples/. Keep that
+# script in step with the steps below.
+#
+# One-time repository setup: Settings -> Pages -> "Build and deployment" ->
+# Source: **GitHub Actions**. Without that, this workflow runs but nothing is
+# served.
+#
+# Every action used here is first-party (owned by the `actions` org). If you
+# want to match the strictness of the npm dependency pinning, replace each
+# `@vN` tag with a full commit SHA.
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Lets you republish from the Actions tab without pushing a commit.
+  workflow_dispatch:
+
+# Least privilege: read the repo, and mint the token Pages deployment needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deployments at once. `cancel-in-progress: false` so a run that
+# is already publishing is allowed to finish rather than leaving Pages half
+# updated.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  SITE_DIRECTORY: build/website
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Local actions are read from the checked-out repository, so checkout
+      # must come first.
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-website
+        with:
+          output-directory: ${{ env.SITE_DIRECTORY }}
+
+      - uses: ./.github/actions/build-docs
+        with:
+          output-directory: ${{ env.SITE_DIRECTORY }}/docs
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.SITE_DIRECTORY }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

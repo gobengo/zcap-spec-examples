@@ -1,0 +1,45 @@
+# Reusable (composite) action: build the website into a directory.
+#
+# Usage, after `actions/checkout`:
+#
+#   - uses: ./.github/actions/build-website
+#     with:
+#       output-directory: build/website
+#
+# Produces:
+#   <output-directory>/             static files copied from website/
+#   <output-directory>/examples/    generated from the zcap-spec snapshot in fixtures.ts
+#
+# The API docs are a separate action (build-docs); gh-pages.yml puts them at
+# <output-directory>/docs/. Knows nothing about where the output goes.
+name: Build website
+description: Build the website from website/ (plus generated examples) into an output directory.
+
+inputs:
+  output-directory:
+    description: Directory to write the built website into, relative to the workspace.
+    required: true
+  node-version:
+    description: Node.js version. Must support type stripping (>= 22.18).
+    required: false
+    default: "22"
+
+outputs:
+  output-directory:
+    description: The directory the website was built into.
+    value: ${{ inputs.output-directory }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    # No `npm ci`: website/build.ts imports only in-repo sources and node:*.
+    # Inputs are passed through env, never interpolated into the script, so a
+    # path cannot inject shell.
+    - shell: bash
+      env:
+        OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
+      run: node website/build.ts --clean --out "$OUTPUT_DIRECTORY"
