@@ -493,3 +493,7 @@ using `globalThis.process` et al.
 
 Commercial LLMs helped write the code based on an initial human-authored README.md.
 The LLM providers were helped by training on the work of many many humans.
+
+## License
+
+[MIT](LICENSE)

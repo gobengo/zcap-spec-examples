@@ -1,6 +1,7 @@
 {
   "name": "zcap-spec-examples",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "license": "MIT",
   "description": "Extracts the examples from the zcap-spec and prints them to stdout.",
   "type": "module",
   "bin": {
@@ -25,7 +26,8 @@
     "ZcapSpecExamplesCli.ts",
     "nodejs.ts",
     "fixtures.ts",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "repository": {
     "type": "git",
