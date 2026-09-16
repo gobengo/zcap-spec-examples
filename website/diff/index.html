@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The page renders two documents fetched from user-supplied ?from= and ?to=.
+       Everything is escaped, but no inline script is allowed either, as a backstop. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src *; img-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+  <!-- diff-app.js redirects to ?from=<this>&to=<this> when neither is given. -->
+  <meta name="zcap-spec-examples:diff-default-from" content="https://w3c-ccg.github.io/zcap-spec/v0.3.0/">
+  <meta name="zcap-spec-examples:diff-default-to" content="https://w3c-ccg.github.io/zcap-spec/v0.4.0-rc.5/">
+  <title>Diff examples between spec versions · zcap-spec-examples</title>
+  <link rel="stylesheet" href="../style.css">
+  <script type="module" src="../app/website/diff-app.js"></script>
+</head>
+<body>
+  <header>
+    <nav><a href="../">zcap-spec-examples</a> · <a href="./">Diff versions</a> · <a href="../examples/">Snapshot examples</a> · <a href="../docs/">API docs</a> · <a href="https://github.com/gobengo/zcap-spec-examples">Repository</a></nav>
+    <h1 id="diff"><a href="#diff">Diff examples between spec versions</a> <span class="badge experimental">experimental</span></h1>
+    <p>
+      Extracts the examples from two versions of a spec and shows which were
+      changed, added, or removed, and how.
+    </p>
+    <form id="diff-form" class="spec-form diff-form" action="./" method="get">
+      <label for="diff-from">From</label>
+      <input id="diff-from" name="from" type="url" required placeholder="https://w3c-ccg.github.io/zcap-spec/v0.3.0/">
+      <label for="diff-to">To</label>
+      <input id="diff-to" name="to" type="url" required placeholder="https://w3c-ccg.github.io/zcap-spec/v0.4.0-rc.5/">
+      <div class="diff-buttons">
+        <button id="diff-swap" type="button" title="Swap From and To">⇅ Swap</button>
+        <button type="submit">Compare</button>
+      </div>
+    </form>
+    <fieldset class="diff-options">
+      <legend class="visually-hidden">Display options</legend>
+      <span class="option-group" role="radiogroup" aria-label="Compare">
+        <label><input id="diff-view-source" type="radio" name="view" value="source" checked> Source</label>
+        <label title="JSON with comments removed and formatting normalized"><input id="diff-view-parsed" type="radio" name="view" value="parsed"> Parsed JSON</label>
+      </span>
+      <label title="Ignore changes to spaces, indentation, blank lines, and line breaks"><input id="diff-ignore-whitespace" type="checkbox"> Ignore whitespace</label>
+      <label><input id="diff-show-unchanged" type="checkbox"> Show unchanged examples</label>
+      <label><input id="diff-full-context" type="checkbox"> Show every line</label>
+    </fieldset>
+    <p id="diff-status" class="status" role="status" aria-live="polite">
+      <noscript>This page fetches both specs in your browser, which needs JavaScript.</noscript>
+    </p>
+  </header>
+  <main>
+    <div id="diff-summary"></div>
+    <nav aria-label="Changed examples">
+      <ol id="diff-toc" class="diff-toc"></ol>
+    </nav>
+    <div id="diff-sections"></div>
+  </main>
+</body>
+</html>

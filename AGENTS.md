@@ -57,6 +57,10 @@ etc/zcap-spec-examples/      sample spec HTML for manual runs
 website/                     static site source; build.ts generates /examples/
 website/describe.ts          describes + renders examples as HTML; pure, shared by build.ts and app.ts
 website/app.ts               homepage script: ?url= → fetch → extract → render, in the browser
+website/spec-url.ts          reads/writes spec URLs in query strings; no imports, shared by page scripts
+website/diff.ts              pairs examples across two spec versions, line/word diffs, renders HTML; pure
+website/diff-app.ts          /diff/ script (experimental): ?from=&to= → fetch both → compare → render
+website/diff/index.html      the /diff/ page, copied as-is by build.ts
 etc/tsconfig.website-app.json  emits website/app.ts into the site's /app/
 ```
 
@@ -234,6 +238,19 @@ action into `build/website/`, the `build-docs` action into
   through `safeHref` (http/https), because an example's URL is resolved
   against a base the *document* declares and can be `javascript:`. The page's
   CSP (no inline script) is a backstop, not the defence; do not loosen either.
+- **`/diff/` pairs examples by content, never by name.** ReSpec numbers
+  examples by position, so `example-3` in one version is routinely
+  `example-4` in the next (v0.3.0 → v0.4.0-rc.5 inserted one at the top).
+  Pairing is always scored on the *source*, whatever the view, so toggling
+  "Parsed JSON" never re-pairs. Links use `baseUrl` = the fetched URL, because
+  the zcap-spec declares its editor's draft as its URL, which would make both
+  versions link to the same page. Its pairwise and LCS work is capped
+  (`MAX_PAIRWISE_COMPARISONS`, `MAX_LINE_DIFF_CELLS`) since both inputs are
+  untrusted.
+- **Page scripts must not import each other.** Each ends by calling its own
+  `main()` when a `document` exists, so importing `app.ts` from another page
+  would run the homepage there. Shared helpers go in a module with no
+  side effects, like `spec-url.ts`.
 - **`/app/` is not `/lib/`.** The homepage script is compiled separately, with
   its own copy of `examples.js`, so `/lib/` stays exactly the public API.
 - **Keep all site links relative.** Project Pages serve from

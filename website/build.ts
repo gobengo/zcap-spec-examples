@@ -21,6 +21,8 @@
  *    `?url=` (defaulting it to the zcap-spec's version index), fetches that
  *    spec in the browser, following an index to its latest version, and
  *    renders its examples with the same code as `/examples/`.
+ *    The experimental `/diff/` page's script, `website/diff-app.ts`, is
+ *    compiled alongside it; its HTML is copied from `website/diff/` in step 1.
  *
  * `--site-url` is the absolute URL the site will be served from, used in that
  * snippet. It defaults to the GitHub Pages URL derived from `repository` in
@@ -130,7 +132,7 @@ export function renderExamplesPage(examples: ZcapSpecExample[]): string {
 </head>
 <body>
   <header>
-    <nav><a href="../">zcap-spec-examples</a> · <a href="./">Examples</a> · <a href="../docs/">API docs</a></nav>
+    <nav><a href="../">zcap-spec-examples</a> · <a href="./">Examples</a> · <a href="../diff/">Diff versions</a> · <a href="../docs/">API docs</a></nav>
     <h1>Examples in the zcap-spec</h1>
     <p>
       ${examples.length} examples extracted from the bundled snapshot of

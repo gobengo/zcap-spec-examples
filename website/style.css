@@ -79,3 +79,57 @@ summary { cursor: pointer; color: var(--muted); }
 @media (prefers-color-scheme: dark) { .status.error { color: #ff7b72; } }
 .usage { border-top: 1px solid var(--border); margin-top: 2.5rem; }
 .usage h2 { margin-top: 1.5rem; }
+
+/* /diff/ (experimental) */
+:root {
+  --add-bg: #e6ffec; --add-mark: #abf2bc; --add-fg: #116329;
+  --del-bg: #ffebe9; --del-mark: #ffcecb; --del-fg: #a40e26;
+  --chg-bg: #fff8c5; --chg-fg: #7d4e00;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --add-bg: #12261e; --add-mark: #1f6f3c; --add-fg: #56d364;
+    --del-bg: #2d1214; --del-mark: #8e1b24; --del-fg: #ff8182;
+    --chg-bg: #2e2410; --chg-fg: #e3b341;
+  }
+}
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.diff-form { display: grid; grid-template-columns: max-content 1fr; }
+.diff-form input { width: 100%; }
+.diff-buttons { grid-column: 1 / -1; display: flex; gap: 0.5rem; justify-content: flex-end; }
+.diff-options { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 0.75rem 0 0; padding: 0; border: 0; font-size: 0.9rem; }
+.diff-options .option-group { display: inline-flex; gap: 0.75rem; }
+.diff-options label { cursor: pointer; white-space: nowrap; }
+.badge {
+  display: inline-block; padding: 0 0.45rem; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 600; line-height: 1.6; vertical-align: 0.15em;
+  border: 1px solid var(--border); color: var(--muted); white-space: nowrap;
+}
+.badge.added { background: var(--add-bg); color: var(--add-fg); border-color: transparent; }
+.badge.removed { background: var(--del-bg); color: var(--del-fg); border-color: transparent; }
+.badge.changed, .badge.experimental { background: var(--chg-bg); color: var(--chg-fg); border-color: transparent; }
+.badge.moved { border-style: dashed; }
+h1 .badge { font-size: 0.8rem; vertical-align: middle; }
+.diff-summary { margin: 1.5rem 0 0.5rem; }
+.diff-toc li { margin: 0.15rem 0; }
+.stat-add { color: var(--add-fg); font: 0.8rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+.stat-remove { color: var(--del-fg); font: 0.8rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+.diff-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+table.diff { border-collapse: collapse; width: 100%; font: 0.8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+table.diff td { padding: 0 0.5rem; vertical-align: top; }
+table.diff td.ln {
+  width: 1%; min-width: 2.5rem; text-align: right; color: var(--muted);
+  user-select: none; border-right: 1px solid var(--border);
+}
+table.diff td.sign { width: 1%; padding-right: 0; user-select: none; color: var(--muted); }
+table.diff td.code { white-space: pre; }
+table.diff tr.ins { background: var(--add-bg); }
+table.diff tr.del { background: var(--del-bg); }
+table.diff tr.ins td.sign { color: var(--add-fg); }
+table.diff tr.del td.sign { color: var(--del-fg); }
+table.diff tr.ins mark { background: var(--add-mark); color: inherit; border-radius: 2px; }
+table.diff tr.del mark { background: var(--del-mark); color: inherit; border-radius: 2px; }
+table.diff tr.gap td { color: var(--muted); padding: 0.15rem 0.5rem; font-style: italic; border-block: 1px solid var(--border); }
+@media (max-width: 40rem) {
+  .diff-form { grid-template-columns: 1fr; }
+}

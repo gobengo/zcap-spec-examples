@@ -1,5 +1,5 @@
 {
-  // The homepage's script, emitted by website/build.ts with `--outDir <site>/app`.
+  // The page scripts (the homepage's app.ts, and /diff/'s diff-app.ts), emitted by website/build.ts with `--outDir <site>/app`.
   // Paths are relative to this file, in `etc/`.
   //
   // `rootDir` is the repo, so the emitted tree mirrors the sources and the
@@ -15,5 +15,5 @@
     "sourceMap": true,
     "inlineSources": true
   },
-  "include": ["../website/app.ts"]
+  "include": ["../website/app.ts", "../website/diff-app.ts"]
 }
