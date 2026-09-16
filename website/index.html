@@ -3,26 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <!-- The page renders a document fetched from a user-supplied ?url=. Everything
-       is escaped, but no inline script is allowed either, as a backstop. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src *; img-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+       is escaped, and no inline script is allowed either, as a backstop.
+       ReSpec (which styles and structures the page) needs, beyond 'self':
+       its script, W3C's stylesheets, logos and fixup.js from www.w3.org; inline
+       <style> elements it injects; and a blob: worker that highlights code.
+       script-src stays without 'unsafe-inline'. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.w3.org; style-src 'self' 'unsafe-inline' https://www.w3.org; worker-src blob:; connect-src *; img-src 'self' data: https://www.w3.org; base-uri 'none'; form-action 'self'; object-src 'none'">
   <!-- Filled in by website/build.ts from WEBSITE_DEFAULT_SPEC_URL; app.js
        redirects to ?url=<this> when no ?url= is given, and follows a version
        index to its latest version. -->
   <meta name="zcap-spec-examples:default-url" content="%WEBSITE_DEFAULT_SPEC_URL%">
   <title>zcap-spec-examples</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="homepage.css">
+  <!-- Order matters. app.js sets window.respecConfig, whose preProcess waits
+       for the examples to be rendered, so ReSpec numbers each one as a
+       subsection of "Examples" and lists it in the table of contents. Module and
+       defer scripts run in document order, so app.js runs before ReSpec. -->
   <script type="module" src="app/website/app.js"></script>
+  <script src="https://www.w3.org/Tools/respec/respec-w3c" class="remove" defer></script>
 </head>
 <body>
-  <header>
-    <nav><a href="./">zcap-spec-examples</a> · <a href="#usage">Usage</a> · <a href="examples/">Snapshot examples</a> · <a href="diff/">Diff versions</a> · <a href="docs/">API docs</a> · <a href="https://github.com/gobengo/zcap-spec-examples">Repository</a></nav>
-    <h1 id="zcap-spec-examples"><a href="#zcap-spec-examples">zcap-spec-examples</a></h1>
+  <h1 id="title">zcap-spec-examples</h1>
+
+  <section id="abstract">
     <p>
       Extracts the examples from the
       <a href="https://w3c-ccg.github.io/zcap-spec/">Authorization Capabilities (zcap) spec</a>
-      and prints them as NDJSON, so every example can be checked and built on.
+      (or any ReSpec document) and prints them as NDJSON, so every example can be checked and built on.
+      This page extracts them live, in your browser: each example below is its own section.
     </p>
+    <p>
+      <a href="examples/">Snapshot examples</a> ·
+      <a href="diff/">Diff versions</a> ·
+      <a href="docs/">API docs</a> ·
+      <a href="https://github.com/gobengo/zcap-spec-examples">Repository</a> ·
+      <a href="#usage">Usage</a>
+    </p>
+  </section>
+
+  <section id="sotd" class="override">
+    <h2>About this page</h2>
+    <p>This page documents the zcap-spec-examples library; it is not a specification.</p>
     <form id="spec-form" class="spec-form" action="./" method="get">
       <label for="spec-url">Spec URL</label>
       <input id="spec-url" name="url" type="url" required placeholder="%WEBSITE_DEFAULT_SPEC_URL%">
@@ -32,34 +56,49 @@
       <noscript>This page fetches the spec in your browser, which needs JavaScript. The
       <a href="examples/">snapshot examples</a> page works without it.</noscript>
     </p>
-  </header>
-  <main>
-    <nav aria-label="Examples">
-      <ol id="examples-toc"></ol>
-    </nav>
-    <div id="examples"></div>
+  </section>
 
-    <!-- The URL placeholder below is filled in by website/build.ts from DEFAULT_ZCAP_SPEC_URL. The
-         bare https://w3c-ccg.github.io/zcap-spec/ is a version index that
-         redirects with JavaScript, so curl gets a page with no examples. -->
-    <section id="usage" class="usage">
-      <h2 id="cli"><a href="#cli">On the command line</a></h2>
-      <pre><code>curl -sS %ZCAP_SPEC_URL% | npx zcap-spec-examples</code></pre>
+  <!-- ReSpec's own copyright line credits the W3C; this one replaces it. -->
+  <p class="copyright">Copyright © Benjamin Goering.
+    zcap-spec-examples is available under the
+    <a rel="license" href="https://github.com/gobengo/zcap-spec-examples/blob/main/LICENSE">MIT License</a>.</p>
 
-      <h2 id="web"><a href="#web">In a web page</a></h2>
+  <!-- Examples quote the spec's MUSTs, which makes ReSpec expect a conformance
+       section. This isn't a spec, so give it an empty one to stay quiet. -->
+  <section id="conformance" class="override" hidden></section>
+
+  <section id="examples">
+    <h2>Examples</h2>
+    <p class="meta">Each example extracted from the spec, in document order.</p>
+    <!-- app.js inserts one <section> per example before this marker. -->
+    <div id="examples-end" hidden></div>
+  </section>
+
+  <!-- The URL placeholder below is filled in by website/build.ts from DEFAULT_ZCAP_SPEC_URL. The
+       bare https://w3c-ccg.github.io/zcap-spec/ is a version index that
+       redirects with JavaScript, so curl gets a page with no examples. -->
+  <section id="usage" class="appendix">
+    <h2>Usage</h2>
+    <section id="cli" class="notoc">
+      <h3>On the command line</h3>
+      <pre class="nohighlight"><code>curl -sS %ZCAP_SPEC_URL% | npx zcap-spec-examples</code></pre>
+    </section>
+
+    <section id="web" class="notoc">
+      <h3>In a web page</h3>
       <p>
         The library is hosted here as ES modules, so any page can import it with
         no install and no build step. Paste this into an HTML file and open the
         console:
       </p>
-      <pre><code>%LIBRARY_SNIPPET%</code></pre>
-      <p class="muted">
+      <pre><code class="html">%LIBRARY_SNIPPET%</code></pre>
+      <p class="meta">
         Hosted modules: <a href="lib/examples.js"><code>lib/examples.js</code></a>
         (extraction and parsing) and <a href="lib/fixtures.js"><code>lib/fixtures.js</code></a>
         (a bundled snapshot of the spec, for use offline), each with
         <code>.d.ts</code> types. See the <a href="docs/">API docs</a>.
       </p>
     </section>
-  </main>
+  </section>
 </body>
 </html>

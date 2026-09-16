@@ -56,7 +56,8 @@ etc/zcap-spec-examples/      sample spec HTML for manual runs
 .github/actions/build-website/  reusable action: website/ + /examples/ + /lib/ into a directory
 website/                     static site source; build.ts generates /examples/
 website/describe.ts          describes + renders examples as HTML; pure, shared by build.ts and app.ts
-website/app.ts               homepage script: ?url= → fetch → extract → render, in the browser
+website/app.ts               homepage script: ?url= → fetch → extract → render, in the browser; sets respecConfig
+website/homepage.css         the homepage's few styles beyond ReSpec's (/examples/ and /diff/ use style.css)
 website/spec-url.ts          reads/writes spec URLs in query strings; no imports, shared by page scripts
 website/diff.ts              pairs examples across two spec versions, line/word diffs, renders HTML; pure
 website/diff-app.ts          /diff/ script (experimental): ?from=&to= → fetch both → compare → render
@@ -237,7 +238,28 @@ action into `build/website/`, the `build-docs` action into
   document. `website/describe.ts` escapes every value and emits `href`s only
   through `safeHref` (http/https), because an example's URL is resolved
   against a base the *document* declares and can be `javascript:`. The page's
-  CSP (no inline script) is a backstop, not the defence; do not loosen either.
+  CSP (no inline script) is a backstop, not the defence; do not loosen either
+  beyond what ReSpec needs (below).
+- **The homepage is formatted by ReSpec**, loaded from `www.w3.org`, a
+  deliberate choice so the page looks and navigates like the specs it reads.
+  Its CSP allows exactly what ReSpec needs: scripts, stylesheets and images
+  from `https://www.w3.org`, inline `<style>`, and a `blob:` worker for code
+  highlighting. `script-src` must never gain `'unsafe-inline'`; ReSpec's
+  optional inline scripts (the dfn panel) are refused, and one CSP error in
+  the console is expected. Because ReSpec processes the rendered examples as
+  markup, they must stay escaped text in plain elements: no `data-include`,
+  no markdown, and no `pre.example` (ReSpec would rename its id to
+  `example-<n>-0`, clashing with the section's).
+- **`app.js` must run before ReSpec.** It sets `window.respecConfig` at module
+  evaluation; `index.html` loads it before ReSpec's `defer` script, and module
+  and defer scripts run in document order. Its `preProcess` waits for the
+  examples, so ReSpec numbers them as subsections of the "Examples" section
+  and lists them under it in the table of contents (`maxTocLevel: 2`; any
+  other subsection needs `class="notoc"` to stay out);
+  after `EXAMPLES_WAIT_MS` ReSpec proceeds anyway, and examples that arrive
+  later get an unnumbered table-of-contents line added by hand. Don't rely on
+  `document.respec` before `preProcess` runs: ReSpec defines it after
+  `DOMContentLoaded`.
 - **`/diff/` pairs examples by content, never by name.** ReSpec numbers
   examples by position, so `example-3` in one version is routinely
   `example-4` in the next (v0.3.0 → v0.4.0-rc.5 inserted one at the top).

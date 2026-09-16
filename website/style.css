@@ -77,8 +77,6 @@ summary { cursor: pointer; color: var(--muted); }
 .status { overflow-wrap: anywhere; }
 .status.error { color: #cf222e; }
 @media (prefers-color-scheme: dark) { .status.error { color: #ff7b72; } }
-.usage { border-top: 1px solid var(--border); margin-top: 2.5rem; }
-.usage h2 { margin-top: 1.5rem; }
 
 /* /diff/ (experimental) */
 :root {

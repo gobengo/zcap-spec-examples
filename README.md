@@ -280,8 +280,12 @@ npm run docs && open docs/index.html
   other spec can be viewed by changing `?url=`, e.g.
   <https://gobengo.github.io/zcap-spec-examples/?url=https://w3c-ccg.github.io/zcap-spec/v0.4.0-draft/>.
   The fetch happens in the browser, so the spec's server must allow
-  cross-origin requests (GitHub Pages does). The script is `website/app.ts`,
-  compiled into `/app/`.
+  cross-origin requests (GitHub Pages does). The page is formatted by
+  [ReSpec](https://respec.org/), loaded from `www.w3.org`: each example is a
+  numbered subsection of "Examples" and its own entry in the table of contents, and
+  keeps its `#example-<n>` id. The script is `website/app.ts`, compiled into
+  `/app/`; it sets `respecConfig`, whose `preProcess` waits (up to 15 seconds)
+  for the examples to render before ReSpec formats the page.
 - `/diff/` (experimental) — compares the examples of two versions of a spec,
   e.g.
   <https://gobengo.github.io/zcap-spec-examples/diff/?from=https://w3c-ccg.github.io/zcap-spec/v0.3.0/&to=https://w3c-ccg.github.io/zcap-spec/v0.4.0-rc.5/>

@@ -3,7 +3,8 @@
  *
  * Shared by `website/build.ts`, which renders the bundled snapshot into the
  * static `/examples/` page, and `website/app.ts`, which renders whatever spec
- * the homepage's `?url=` points at, in the browser. So this module must stay
+ * the homepage's `?url=` points at, in the browser, as sections ReSpec then
+ * formats. So this module must stay
  * pure: no `node:*`, no DOM, no `process`. Its only import is `../examples.ts`.
  *
  * Everything it renders is escaped, and every link it emits is checked with
@@ -235,9 +236,11 @@ export function renderExampleTocItem(example: ZcapSpecExample): string {
   return `<li><a href="#${escapeHtml(example.name)}">${escapeHtml(example.name)}</a> <span class="muted">${escapeHtml(kind)}</span></li>`;
 }
 
-/** One example as a `<section>`, with its description, facts, and source. */
-export function renderExampleSection(example: ZcapSpecExample): string {
-  const d = describeExample(example);
+/**
+ * The pieces of an example section shared by the `/examples/` page and the
+ * ReSpec-formatted homepage: everything but the heading.
+ */
+function renderExampleBody(example: ZcapSpecExample, d: ExampleDescription): string {
   const facts = d.facts.length
     ? `<dl>${d.facts
         .map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd><code>${escapeHtml(v)}</code></dd>`)
@@ -251,12 +254,51 @@ export function renderExampleSection(example: ZcapSpecExample): string {
     ? ` · <a href="${escapeHtml(href)}">View in the spec</a>`
     : ` · <code>${escapeHtml(example.url)}</code>`;
   return `
-    <section id="${escapeHtml(example.name)}" class="example">
-      <h2><a href="#${escapeHtml(example.name)}">${escapeHtml(example.name)}</a>: ${escapeHtml(d.kind)}</h2>
       <p class="meta"><code>${escapeHtml(example.mediaType)}</code>${specLink}</p>
       <p>${escapeHtml(d.summary)}</p>
       ${facts}
       <details open><summary>Source</summary><pre><code>${escapeHtml(example.content)}</code></pre></details>
-      ${parsed}
+      ${parsed}`;
+}
+
+/**
+ * One example as a ReSpec `<section>` for the homepage, nested in its
+ * "Examples" section (hence the `<h3>`).
+ *
+ * Unlike {@link renderExampleSection}, the heading has no link of its own and
+ * there is no separate table-of-contents entry: ReSpec numbers the section,
+ * adds its self-link, and lists it in the table of contents, so every example
+ * is an entry under "Examples" there. The section keeps `id="<example.name>"`, so
+ * `#example-3` still lands on the example ReSpec numbers the same way in the
+ * spec.
+ *
+ * The source is deliberately not a `<pre class="example">`: ReSpec would give
+ * that its own generated `example-<n>` id, which collides with the section's
+ * and would be renamed `example-<n>-0`.
+ */
+export function renderExampleRespecSection(example: ZcapSpecExample): string {
+  const d = describeExample(example);
+  return `
+    <section id="${escapeHtml(example.name)}" class="zcap-example">
+      <h3>${escapeHtml(example.name)}: ${escapeHtml(d.kind)}</h3>${renderExampleBody(example, d)}
+    </section>`;
+}
+
+/**
+ * A table-of-contents line in ReSpec's markup, for an example that arrived
+ * after ReSpec had already built the table of contents (see `website/app.ts`).
+ * It has no section number, since ReSpec did not number that section.
+ */
+export function renderExampleRespecTocItem(example: ZcapSpecExample): string {
+  const { kind } = describeExample(example);
+  return `<li class="tocline"><a class="tocxref" href="#${escapeHtml(example.name)}">${escapeHtml(example.name)}: ${escapeHtml(kind)}</a></li>`;
+}
+
+/** One example as a `<section>`, with its description, facts, and source. */
+export function renderExampleSection(example: ZcapSpecExample): string {
+  const d = describeExample(example);
+  return `
+    <section id="${escapeHtml(example.name)}" class="example">
+      <h2><a href="#${escapeHtml(example.name)}">${escapeHtml(example.name)}</a>: ${escapeHtml(d.kind)}</h2>${renderExampleBody(example, d)}
     </section>`;
 }

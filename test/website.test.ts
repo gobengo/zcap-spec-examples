@@ -1,8 +1,14 @@
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { extractExamplesFromHtml } from "../examples.ts";
-import { renderExampleSection, safeHref } from "../website/describe.ts";
-import { specUrlFromSearch, specUrlQuery } from "../website/app.ts";
+import {
+  renderExampleRespecSection,
+  renderExampleRespecTocItem,
+  renderExampleSection,
+  safeHref,
+} from "../website/describe.ts";
+import { homepageRespecConfig, specUrlFromSearch, specUrlQuery } from "../website/app.ts";
 
 const page = "https://gobengo.github.io/zcap-spec-examples/";
 
@@ -50,4 +56,65 @@ test("renderExampleSection escapes a hostile document and does not link javascri
   const section = renderExampleSection(example);
   assert.doesNotMatch(section, /<img/);
   assert.doesNotMatch(section, /href="javascript:/);
+});
+
+test("renderExampleRespecSection is a subsection ReSpec can number, keeping the example's id", () => {
+  const html = `<html><head><script>var respecConfig = { edDraftURI: "javascript:alert(1)//" };</script></head><body>
+    <pre class="example">{"id": "&lt;img src=x onerror=alert(2)&gt;"}</pre></body></html>`;
+  const [example] = extractExamplesFromHtml(html);
+  assert.ok(example);
+  const section = renderExampleRespecSection(example);
+  assert.match(section, /^\s*<section id="example-1" class="zcap-example">\s*<h3>example-1: [^<]+<\/h3>/);
+  // ReSpec adds the heading's self-link, and would rename a pre.example's id.
+  assert.doesNotMatch(section, /<h3><a/);
+  assert.doesNotMatch(section, /class="example"/);
+  assert.doesNotMatch(section, /<img/);
+  assert.doesNotMatch(section, /href="javascript:/);
+  assert.doesNotMatch(renderExampleRespecTocItem(example), /<img/);
+});
+
+test("homepageRespecConfig: preProcess waits for the examples, then lets ReSpec run", async () => {
+  let rendered!: () => void;
+  let gaveUp = false;
+  const config = homepageRespecConfig(new Promise<void>((resolve) => (rendered = resolve)), {
+    waitMs: 10_000,
+    onGiveUpWaiting: () => (gaveUp = true),
+  });
+  assert.equal(config.maxTocLevel, 2);
+  let finished = false;
+  const running = Promise.all(config.preProcess.map((step) => step())).then(() => (finished = true));
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(finished, false, "preProcess must not resolve before the examples are rendered");
+  rendered();
+  await running;
+  assert.equal(gaveUp, false);
+});
+
+test("homepageRespecConfig: preProcess gives up after waitMs, rather than leave the page unformatted", async () => {
+  let gaveUp = false;
+  const config = homepageRespecConfig(new Promise<void>(() => {}), { waitMs: 10, onGiveUpWaiting: () => (gaveUp = true) });
+  await Promise.all(config.preProcess.map((step) => step()));
+  assert.equal(gaveUp, true);
+});
+
+test("homepageRespecConfig: a failed render still lets ReSpec run", async () => {
+  let gaveUp = false;
+  const config = homepageRespecConfig(Promise.reject(new Error("boom")), { waitMs: 10_000, onGiveUpWaiting: () => (gaveUp = true) });
+  await Promise.all(config.preProcess.map((step) => step()));
+  assert.equal(gaveUp, false);
+});
+
+test("the homepage loads app.js before ReSpec, and its CSP still forbids inline script", () => {
+  const index = readFileSync(new URL("../website/index.html", import.meta.url), "utf8");
+  const app = index.indexOf(`<script type="module" src="app/website/app.js">`);
+  const respec = index.indexOf(`src="https://www.w3.org/Tools/respec/respec-w3c"`);
+  assert.ok(app !== -1 && respec !== -1 && app < respec, "app.js sets respecConfig, so it must run first");
+  assert.match(index.slice(respec - 200, respec + 200), /\bdefer\b/);
+  const csp = /http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(index)?.[1];
+  assert.ok(csp);
+  const scriptSrc = csp.split(";").map((d) => d.trim()).find((d) => d.startsWith("script-src "));
+  assert.equal(scriptSrc, "script-src 'self' https://www.w3.org");
+  // Examples are rendered into the "Examples" section, so they nest under it.
+  assert.match(index, /<section id="examples">\s*<h2>Examples<\/h2>[\s\S]*<div id="examples-end" hidden><\/div>\s*<\/section>/);
+  assert.doesNotMatch(index, /<script(?![^>]*\bsrc=)[^>]*>/, "no inline scripts");
 });

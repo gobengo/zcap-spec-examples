@@ -1,0 +1,32 @@
+/*
+ * The homepage is styled by ReSpec and W3C's stylesheets; this only covers
+ * what they don't: the spec URL form, the status line, and example details.
+ * (/examples/ and /diff/ use style.css instead.)
+ */
+:root {
+  --zse-muted: #59636e;
+  --zse-border: #d1d9e0;
+  --zse-error: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --zse-muted: #9198a1; --zse-border: #3d444d; --zse-error: #ff7b72; }
+}
+.spec-form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 1rem 0 0.5rem; }
+.spec-form label { font-weight: 600; }
+.spec-form input {
+  flex: 1 1 20rem; min-width: 0; padding: 0.35rem 0.5rem;
+  font: 0.9rem ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.spec-form button { font: inherit; padding: 0.35rem 0.8rem; cursor: pointer; }
+.status { overflow-wrap: anywhere; }
+.status.error { color: var(--zse-error); }
+.meta, .muted { color: var(--zse-muted); }
+.zcap-example .meta { font-size: 0.9rem; }
+.zcap-example dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+.zcap-example dt { color: var(--zse-muted); margin: 0; }
+.zcap-example dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 40rem) {
+  .zcap-example dl { grid-template-columns: 1fr; }
+  .zcap-example dd { margin-bottom: 0.5rem; }
+}
+.zcap-example summary { cursor: pointer; color: var(--zse-muted); }
