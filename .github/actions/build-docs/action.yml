@@ -1,0 +1,51 @@
+# Reusable (composite) action: build the TypeDoc API docs into a directory.
+#
+# Usage, after `actions/checkout`:
+#
+#   - uses: ./.github/actions/build-docs
+#     with:
+#       output-directory: docs
+#
+# Knows nothing about where the output goes; publishing is gh-pages.yml's job.
+name: Build docs
+description: Type-check, then build the TypeDoc API docs into an output directory.
+
+inputs:
+  output-directory:
+    description: Directory to write the docs into, relative to the workspace.
+    required: true
+  node-version:
+    description: Node.js version. Must support type stripping (>= 22.18).
+    required: false
+    default: "22"
+
+outputs:
+  output-directory:
+    description: The directory the docs were built into.
+    value: ${{ inputs.output-directory }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+
+    # `npm ci` for a reproducible tree. It does not build `dist/` (.npmrc sets
+    # ignore-scripts=true, so `prepare` is skipped), and nothing here needs it:
+    # TypeDoc reads the .ts sources directly.
+    - shell: bash
+      run: npm ci
+
+    # Fail before building if the sources do not type-check, since TypeDoc
+    # reads the same types it documents.
+    - shell: bash
+      run: npm run tsc
+
+    # Inputs are passed through env, never interpolated into the script, so a
+    # path cannot inject shell. `--out` overrides "out" in etc/typedoc.json.
+    - shell: bash
+      env:
+        OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
+      run: npm exec -- typedoc --options etc/typedoc.json --out "$OUTPUT_DIRECTORY"

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>zcap-spec-examples</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <nav><a href="./">zcap-spec-examples</a> · <a href="examples/">Examples</a> · <a href="docs/">API docs</a></nav>
+    <h1>zcap-spec-examples</h1>
+    <p>
+      Extracts the examples from the
+      <a href="https://w3c-ccg.github.io/zcap-spec/">Authorization Capabilities (zcap) spec</a>
+      and prints them as NDJSON, so every example can be checked and built on.
+    </p>
+  </header>
+  <main>
+    <ul class="cards">
+      <li><a href="examples/"><strong>Examples</strong><span>Each example in the spec, described and parsed.</span></a></li>
+      <li><a href="docs/"><strong>API docs</strong><span>The library's TypeScript API.</span></a></li>
+      <li><a href="https://github.com/gobengo/zcap-spec-examples"><strong>Repository</strong><span>Source, README, and issues.</span></a></li>
+    </ul>
+    <pre><code>curl -sS https://w3c-ccg.github.io/zcap-spec/ | npx zcap-spec-examples</code></pre>
+  </main>
+</body>
+</html>
